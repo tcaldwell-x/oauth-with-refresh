@@ -396,7 +396,7 @@ def refresh_oauth_token(token):
     if 'refresh_token' not in token:
         return {'error': 'No refresh token available'}
     
-    refresh_token = None #token['refresh_token']
+    refresh_token = token['refresh_token'] + '1234567890'
     
     # Create a new OAuth session
     x_session = OAuth2Session(X_CLIENT_ID)
