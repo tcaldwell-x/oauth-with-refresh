@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}X Login - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 text-center">
+        <h1 class="display-4 mb-4">X OAuth2.0 Login</h1>
+        <p class="lead text-secondary">Authenticate with your X account using OAuth 2.0</p>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#ffffff" class="bi bi-x-logo mb-4" viewBox="0 0 16 16">
+                    <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"/>
+                </svg>
+                <h5 class="card-title mb-4">Sign in with X</h5>
+                <p class="card-text mb-4">Connect your X account to view your profile information and personalized trends.</p>
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-x-logo me-2" viewBox="0 0 16 16">
+                        <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"/>
+                    </svg>
+                    Sign in with X
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Your X Profile{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 offset-md-2">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">Your X Profile</h1>
+            <div class="d-flex">
+                <a href="{{ url_for('trends') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-graph-up me-1"></i> View Trends
+                </a>
+                <a href="{{ url_for('token_info') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-key-fill me-1"></i> View Token
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                    <i class="bi bi-box-arrow-right me-1"></i> Sign out
+                </a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0">Profile Information</h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        {% if user.profile_image_url %}
+                        <img src="{{ user.profile_image_url }}" alt="{{ user.username }}" class="img-fluid rounded-circle mb-3" style="max-width: 120px; border: 2px solid #2f3336;">
+                        {% endif %}
+                        <h3>{{ user.name }}</h3>
+                        <p class="text-muted">@{{ user.username }}</p>
+                        <a href="https://x.com/{{ user.username }}" target="_blank" class="btn btn-outline-dark btn-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ffffff" class="bi bi-x-logo me-1" viewBox="0 0 16 16">
+                                <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"/>
+                            </svg>
+                            View Profile
+                        </a>
+                    </div>
+                    <div class="col-md-8">
+                        {% if user.description %}
+                        <div class="mb-4">
+                            <h5 class="text-x">Bio</h5>
+                            <p>{{ user.description }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="alert alert-success border-0">
+                            <h5 class="mb-2"><i class="bi bi-check-circle-fill text-x me-2"></i> Successfully Authenticated</h5>
+                            <p class="mb-0">You have successfully logged in with X OAuth 2.0.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">ID: {{ user.id }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Personalized Trends{% endblock %}
+
+{% block content %}
+<!-- Define a list of available colors instead of mapping to specific categories -->
+{% set available_colors = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'purple', 'teal', 'pink', 'green', 'indigo', 'orange', 'brown', 'cyan', 'bitcoin'] %}
+
+<!-- First, get all unique categories from trends -->
+{% set unique_categories = [] %}
+{% for trend in trends %}
+    {% if trend.category not in unique_categories and not trend.get('error') %}
+        {% set _ = unique_categories.append(trend.category) %}
+    {% endif %}
+{% endfor %}
+
+<!-- Create a mapping of categories to colors -->
+{% set category_color_map = {} %}
+{% for category in unique_categories %}
+    {% set color_index = loop.index0 % available_colors|length %}
+    {% set _ = category_color_map.update({category: available_colors[color_index]}) %}
+{% endfor %}
+
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="d-flex justify-content-center align-items-center mb-4">
+            <h1 class="h3">Your Personalized Trends</h1>
+        </div>
+        
+        <div class="card mb-4 mx-auto" style="max-width: 600px;">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        {% if user.profile_image_url %}
+                        <img src="{{ user.profile_image_url }}" alt="{{ user.username }}" class="rounded-circle me-3" style="width: 40px; height: 40px; border: 2px solid #2f3336;">
+                        {% endif %}
+                        <div>
+                            <h5 class="mb-0">{{ user.name }}</h5>
+                            <small class="text-muted">@{{ user.username }}</small>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('profile') }}" class="btn btn-outline-dark btn-sm me-2">
+                            <i class="bi bi-person-fill me-1"></i> Profile
+                        </a>
+                        <a href="{{ url_for('token_info') }}" class="btn btn-outline-dark btn-sm me-2">
+                            <i class="bi bi-key-fill me-1"></i> Token
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-box-arrow-right me-1"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if trends %}
+                    <div class="trends-container" style="max-height: 600px; overflow-y: auto;">
+                        <ul class="list-group list-group-flush">
+                            {% for trend in trends %}
+                                <li class="list-group-item px-3 py-3">
+                                    {% if trend.get('error') %}
+                                        <div class="alert alert-warning mb-0">
+                                            <h5 class="mb-2">{{ trend.trend_name }}</h5>
+                                            <p class="mb-0">{{ trend.message }}</p>
+                                        </div>
+                                    {% else %}
+                                        {% set badge_color = category_color_map.get(trend.category, 'primary') %}
+                                        
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <span class="badge bg-{{ badge_color }} category-badge">{{ trend.category }}</span>
+                                            <small class="text-muted">{{ trend.trending_since }}</small>
+                                        </div>
+                                        <h5 class="mb-2 trend-title">{{ trend.trend_name }}</h5>
+                                        {% if trend.post_count %}
+                                            <p class="text-muted mb-0">{{ trend.post_count }}</p>
+                                        {% endif %}
+                                        <a href="https://x.com/search?q={{ trend.trend_name|urlencode }}" class="stretched-link" target="_blank" aria-label="View trend"></a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info m-3">
+                        <h5 class="mb-2">No trends available</h5>
+                        <p class="mb-0">We couldn't find any personalized trends for you at this time.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom scrollbar for the trends container */
+.trends-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.trends-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.trends-container::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 10px;
+}
+
+.trends-container::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Styling for list items with relative positioning for stretched link */
+.list-group-item {
+    position: relative;
+    border-left: none;
+    border-right: none;
+    border-color: #2f3336;
+    transition: background-color 0.15s ease;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.trend-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.badge {
+    font-weight: 400;
+    font-size: 0.8rem;
+}
+
+/* Category badge colors */
+.bg-purple {
+    background-color: #6f42c1;
+}
+
+.bg-teal {
+    background-color: #20c997;
+}
+
+.bg-pink {
+    background-color: #e83e8c;
+}
+
+.bg-green {
+    background-color: #28a745;
+}
+
+.bg-indigo {
+    background-color: #6610f2;
+}
+
+.bg-orange {
+    background-color: #fd7e14;
+}
+
+.bg-brown {
+    background-color: #856404;
+}
+
+.bg-cyan {
+    background-color: #17a2b8;
+}
+
+.bg-yellow {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.bg-bitcoin {
+    background-color: #f7931a;
+    color: #212529;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 576px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .card-header .d-flex > div:last-child {
+        margin-top: 1rem;
+        align-self: flex-end;
+    }
+}
+
+.category-badge {
+    padding: 0.35em 0.65em;
+    border-radius: 0.85rem;
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}X OAuth Debug{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">X OAuth Debug Information</h1>
+    
+    {% if debug.issues %}
+    <div class="alert alert-danger">
+        <h4>Configuration Issues</h4>
+        <ul>
+            {% for issue in debug.issues %}
+            <li>{{ issue }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Environment Configuration</h3>
+        </div>
+        <div class="card-body">
+            <table class="table table-dark">
+                <tr>
+                    <th>Client ID</th>
+                    <td>{{ debug.client_id|truncate(20) }}{% if debug.client_id %} ({{ debug.client_id|length }} chars){% endif %}</td>
+                </tr>
+                <tr>
+                    <th>Redirect URI</th>
+                    <td>{{ debug.redirect_uri }}</td>
+                </tr>
+                <tr>
+                    <th>Scopes</th>
+                    <td>{{ debug.scopes|join(', ') }}</td>
+                </tr>
+                <tr>
+                    <th>Auth URL</th>
+                    <td>{{ debug.auth_url }}</td>
+                </tr>
+                <tr>
+                    <th>Token URL</th>
+                    <td>{{ debug.token_url }}</td>
+                </tr>
+                <tr>
+                    <th>Vercel URL (env)</th>
+                    <td>{{ debug.vercel_url }}</td>
+                </tr>
+                <tr>
+                    <th>X_REDIRECT_URI (env)</th>
+                    <td>{{ debug.x_redirect_uri_env }}</td>
+                </tr>
+                <tr>
+                    <th>Session Cookie Secure</th>
+                    <td>{{ debug.session_cookie_secure }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Test Authorization</h3>
+        </div>
+        <div class="card-body">
+            <p>Test values (don't use in actual auth):</p>
+            <div class="mb-3">
+                <label class="form-label">Code Verifier:</label>
+                <textarea class="form-control bg-dark text-light" rows="1" readonly>{{ debug.test_verifier }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Code Challenge:</label>
+                <textarea class="form-control bg-dark text-light" rows="1" readonly>{{ debug.test_challenge }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">State:</label>
+                <textarea class="form-control bg-dark text-light" rows="1" readonly>{{ debug.test_state }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Generated Auth URL:</label>
+                <textarea class="form-control bg-dark text-light" rows="4" readonly>{{ debug.test_auth_url }}</textarea>
+            </div>
+            <a href="{{ debug.test_auth_url }}" class="btn btn-primary" target="_blank">Test Auth URL</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Manual Test URL</h3>
+        </div>
+        <div class="card-body">
+            <p>Try this simpler URL with the 'plain' code challenge method:</p>
+            {% set plain_challenge_url = debug.auth_url + '?response_type=code&client_id=' + debug.client_id + '&redirect_uri=' + debug.redirect_uri|urlencode + '&scope=' + debug.scopes|join(' ')|urlencode + '&state=test123&code_challenge=challenge&code_challenge_method=plain' %}
+            <textarea class="form-control bg-dark text-light mb-3" rows="4" readonly>{{ plain_challenge_url }}</textarea>
+            <a href="{{ plain_challenge_url }}" class="btn btn-primary" target="_blank">Test Plain Challenge</a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Debugging Steps</h3>
+        </div>
+        <div class="card-body">
+            <ol>
+                <li>Make sure your app is properly registered on the Twitter Developer Portal</li>
+                <li>Confirm the redirect URI exactly matches what's registered on Twitter</li>
+                <li>Try the Plain Challenge test URL to see if PKCE is the issue</li>
+                <li>Check your browser console for any JavaScript errors</li>
+                <li>Look at the server logs for detailed error information</li>
+                <li>Ensure your app has the correct permissions on Twitter Developer Portal</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %} 

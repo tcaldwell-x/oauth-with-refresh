@@ -1,0 +1,143 @@
+/* Custom styles for the X OAuth Demo - Dark Theme */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #000000;
+    color: #e7e9ea;
+}
+
+.navbar {
+    background-color: #000000 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid #2f3336;
+}
+
+.card {
+    border-radius: 16px;
+    background-color: #000000;
+    border: 1px solid #2f3336;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: #000000 !important;
+    border-bottom: 1px solid #2f3336;
+}
+
+.card-footer {
+    background-color: #000000 !important;
+    border-top: 1px solid #2f3336;
+}
+
+.card-title {
+    font-weight: 700;
+    color: #e7e9ea;
+}
+
+.card-text {
+    color: #71767b;
+}
+
+.btn-primary {
+    background-color: #ffffff;
+    border-color: #e1e1e1;
+    font-weight: 600;
+    border-radius: 9999px;
+    color: #000000;
+}
+
+.btn-primary:hover {
+    background-color: #f0f0f0;
+    border-color: #d0d0d0;
+    color: #000000;
+}
+
+.btn-outline-dark {
+    color: #e7e9ea;
+    border-color: #2f3336;
+    border-radius: 9999px;
+    padding: 0.65rem 1.2rem;
+}
+
+.btn-outline-dark:hover {
+    background-color: rgba(239, 243, 244, 0.1);
+    border-color: #2f3336;
+    color: #e7e9ea;
+}
+
+.btn-outline-danger {
+    border-radius: 9999px;
+}
+
+.list-group-item {
+    background-color: #000000;
+    border-color: #2f3336;
+    color: #e7e9ea;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+/* X-specific colors */
+.text-x {
+    color: #ffffff;
+}
+
+.bg-x {
+    background-color: #ffffff;
+}
+
+/* Logo color override */
+.x-logo-white {
+    fill: #ffffff !important;
+}
+
+/* Dark theme adjustments */
+.bg-dark {
+    background-color: #000000 !important;
+}
+
+.text-white {
+    color: #e7e9ea !important;
+}
+
+.text-muted {
+    color: #71767b !important;
+}
+
+.alert-success {
+    background-color: #071a14;
+    border-color: #0f3a2d;
+    color: #e7e9ea;
+}
+
+.alert-danger {
+    background-color: #310413;
+    border-color: #5c0a21;
+    color: #e7e9ea;
+}
+
+footer {
+    margin-top: 50px;
+    background-color: #000000 !important;
+    border-top: 1px solid #2f3336;
+    color: #71767b;
+}
+
+/* Custom container background for dark theme */
+.container.mt-4 {
+    background-color: #000000;
+}
+
+/* Specific style for the View Profile button with X logo */
+.btn-outline-dark.btn-sm {
+    padding: 0.5rem 1.25rem;
+}
+
+/* Add more padding when the button contains the X logo SVG */
+.btn-outline-dark .bi-x-logo {
+    margin-right: 0.6rem;
+} 

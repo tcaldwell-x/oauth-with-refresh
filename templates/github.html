@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}GitHub User - {{ user.login }}{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h1 class="h3 mb-0">GitHub User Profile</h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <img src="{{ user.avatar_url }}" alt="{{ user.login }}" class="img-fluid rounded-circle mb-3" style="max-width: 180px;">
+                        <h3>{{ user.name or user.login }}</h3>
+                        <p class="text-muted">@{{ user.login }}</p>
+                        <a href="{{ user.html_url }}" target="_blank" class="btn btn-outline-dark btn-sm">View on GitHub</a>
+                    </div>
+                    <div class="col-md-8">
+                        {% if user.bio %}
+                        <div class="mb-3">
+                            <h4>Bio</h4>
+                            <p>{{ user.bio }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">{{ user.public_repos }}</h5>
+                                        <p class="card-text">Repositories</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">{{ user.followers }}</h5>
+                                        <p class="card-text">Followers</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">{{ user.following }}</h5>
+                                        <p class="card-text">Following</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <ul class="list-group">
+                            {% if user.company %}
+                            <li class="list-group-item">
+                                <i class="bi bi-building"></i> {{ user.company }}
+                            </li>
+                            {% endif %}
+                            
+                            {% if user.location %}
+                            <li class="list-group-item">
+                                <i class="bi bi-geo-alt"></i> {{ user.location }}
+                            </li>
+                            {% endif %}
+                            
+                            {% if user.email %}
+                            <li class="list-group-item">
+                                <i class="bi bi-envelope"></i> {{ user.email }}
+                            </li>
+                            {% endif %}
+                            
+                            {% if user.blog %}
+                            <li class="list-group-item">
+                                <i class="bi bi-link"></i> 
+                                <a href="{{ user.blog }}" target="_blank">{{ user.blog }}</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="list-group-item">
+                                <i class="bi bi-calendar"></i> Joined on {{ user.created_at | date }}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Weather API Demo{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 offset-md-2">
+        <h1 class="mb-4">Weather API</h1>
+        <p class="lead">Check the current weather for any city using the OpenWeatherMap API.</p>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('weather') }}">
+                    <div class="mb-3">
+                        <label for="city" class="form-label">Enter City Name</label>
+                        <input type="text" class="form-control" id="city" name="city" 
+                               placeholder="e.g., London, New York, Tokyo" required
+                               value="{{ city if city else '' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Get Weather</button>
+                </form>
+            </div>
+        </div>
+        
+        {% if error %}
+        <div class="alert alert-danger mt-4">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        {% if weather %}
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{ weather.name }}, {{ weather.sys.country }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 text-center">
+                        <img src="https://openweathermap.org/img/wn/{{ weather.weather[0].icon }}@2x.png" 
+                             alt="{{ weather.weather[0].description }}" class="weather-icon">
+                        <h5>{{ weather.weather[0].main }}</h5>
+                        <p>{{ weather.weather[0].description | capitalize }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h2>{{ weather.main.temp }}°C</h2>
+                            <p>Feels like: {{ weather.main.feels_like }}°C</p>
+                        </div>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Humidity
+                                <span class="badge bg-primary rounded-pill">{{ weather.main.humidity }}%</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Wind Speed
+                                <span class="badge bg-primary rounded-pill">{{ weather.wind.speed }} m/s</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Pressure
+                                <span class="badge bg-primary rounded-pill">{{ weather.main.pressure }} hPa</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                Last updated: {{ weather.dt | timestamp_to_datetime }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add any weather-specific JavaScript here
+</script>
+{% endblock %} 

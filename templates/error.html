@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Error - X OAuth Demo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0">Error Occurred</h3>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Something went wrong</h5>
+                <p class="card-text">{{ error }}</p>
+                
+                <div class="alert alert-info">
+                    <h5>Debugging Tips:</h5>
+                    <ul>
+                        <li>Check that your Twitter Developer App is properly configured</li>
+                        <li>Ensure your callback URL matches exactly with what's registered on Twitter</li>
+                        <li>Verify that your scopes are approved for your app</li>
+                        <li>Check for HTTPS/HTTP mismatches in the callback URL</li>
+                        <li>Try clearing your browser cookies and cache</li>
+                        <li>Visit the <a href="{{ url_for('debug_twitter') }}" class="text-info">Debug Page</a> for more information</li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-2">Back to Home</a>
+                    <a href="{{ url_for('debug_twitter') }}" class="btn btn-info">Debug OAuth Configuration</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
