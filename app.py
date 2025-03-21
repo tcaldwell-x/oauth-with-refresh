@@ -24,14 +24,14 @@ app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minute
 
 # For production environments like Vercel, ensure HTTPS is used for callbacks
 if os.getenv('VERCEL_ENV') == 'production':
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
     app.config['PREFERRED_URL_SCHEME'] = 'https'
 else:
-    # For local development only - remove in production
+    # For local development only - remove in production.
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # X OAuth 2.0 Settings
