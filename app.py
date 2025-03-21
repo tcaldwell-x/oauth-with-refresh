@@ -405,7 +405,7 @@ def refresh_oauth_token(token):
     token_data = {
         'grant_type': 'refresh_token',
         'refresh_token': refresh_token,
-        'client_id': X_CLIENT_ID,
+        # 'client_id': X_CLIENT_ID,
         'client_secret': X_CLIENT_SECRET
     }
     
