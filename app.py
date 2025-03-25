@@ -414,6 +414,7 @@ def refresh_oauth_token(token):
         # Make a POST request to refresh the token
         response = x_session.post(TOKEN_URL, data=token_data, headers=headers)
         
+        print(f"HEADERS: {headers}")
         if response.status_code == 200:
             new_token = response.json()
             
