@@ -408,10 +408,11 @@ def refresh_oauth_token(token):
         'client_id': X_CLIENT_ID
         # 'client_secret': X_CLIENT_SECRET
     }
-    
+    headers = {"X-B3-Flags": "1"}
+
     try:
         # Make a POST request to refresh the token
-        response = x_session.post(TOKEN_URL, data=token_data)
+        response = x_session.post(TOKEN_URL, data=token_data, headers=headers)
         
         if response.status_code == 200:
             new_token = response.json()
