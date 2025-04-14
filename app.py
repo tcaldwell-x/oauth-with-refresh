@@ -57,8 +57,8 @@ SCOPES = [
     'users.read',
     'tweet.write',
     'offline.access',
-    'ads.mact.read',
-    'ads.mact.write',
+    # 'ads.mact.read',
+    # 'ads.mact.write',
     'ads.access.read',
     'ads.access.write',
     'ads.settings.read',
@@ -67,12 +67,11 @@ SCOPES = [
     'ads.campaign.write',
     'ads.creatives.read',
     'ads.creatives.write',
-    'ads.spend.read',
-    'ads.engagement.read',
+    # 'ads.spend.read',
+    # 'ads.engagement.read',
     'ads.audiences.read',
     'ads.audiences.write',
-    'ads.audiences.read',
-    'ads.3pm.read',
+    # 'ads.3pm.read',
 
 ]
 
