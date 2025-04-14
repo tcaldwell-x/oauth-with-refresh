@@ -52,7 +52,29 @@ TOKEN_URL = 'https://api.x.com/2/oauth2/token'
 USERINFO_URL = 'https://api.x.com/2/users/me'
 
 # Scopes needed for the application
-SCOPES = ['tweet.read', 'users.read', 'offline.access']
+SCOPES = [
+    'tweet.read',
+    'users.read',
+    'tweet.write',
+    'offline.access',
+    'ads.mact.read',
+    'ads.mact.write',
+    'ads.access.read',
+    'ads.access.write',
+    'ads.settings.read',
+    'ads.settings.write',
+    'ads.campaign.read',
+    'ads.campaign.write',
+    'ads.creatives.read',
+    'ads.creatives.write',
+    'ads.spend.read',
+    'ads.engagement.read',
+    'ads.audiences.read',
+    'ads.audiences.write',
+    'ads.audiences.read',
+    'ads.3pm.read',
+
+]
 
 # Helper function to generate a code verifier for PKCE
 def generate_code_verifier(length=64):
