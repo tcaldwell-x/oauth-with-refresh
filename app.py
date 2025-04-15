@@ -56,24 +56,7 @@ SCOPES = [
     'tweet.read',
     'users.read',
     'tweet.write',
-    # 'offline.access',
-    # 'ads.access.read',
-    # 'ads.access.write',
-    # 'ads.settings.read',
-    # 'ads.settings.write',
-    'ads.campaign.read',
-    # 'ads.campaign.write',
-    # 'ads.creatives.read',
-    # 'ads.creatives.write',
-    # 'ads.audiences.read',
-    # 'ads.audiences.write',
-    # ====
-    # 'ads.spend.read',
-    # 'ads.engagement.read',
-    # 'ads.3pm.read',
-    # 'ads.mact.read',
-    # 'ads.mact.write',
-
+    'offline.access',
 ]
 
 # Helper function to generate a code verifier for PKCE
