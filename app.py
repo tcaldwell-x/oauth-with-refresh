@@ -54,8 +54,9 @@ USERINFO_URL = 'https://api.x.com/2/users/me'
 # Scopes needed for the application
 SCOPES = [
     'tweet.read',
-    'users.read',
     'tweet.write',
+    'users.read',
+    'users.email',
     'offline.access',
 ]
 
