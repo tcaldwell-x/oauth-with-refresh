@@ -414,7 +414,7 @@ def refresh_oauth_token(token):
         'client_id': X_CLIENT_ID
         # 'client_secret': X_CLIENT_SECRET
     }
-    headers = {"X-B3-Flags": "1"}
+    headers = {}
 
     try:
         # Make a POST request to refresh the token
