@@ -57,6 +57,7 @@ SCOPES = [
     'tweet.write',
     'users.read',
     'users.email',
+    'bookmark.read',
     'offline.access',
 ]
 
@@ -298,6 +299,67 @@ def fetch_personalized_trends(token):
         }
 
 
+def fetch_user_bookmarks(token, user_id):
+    """Fetch the user's bookmarks from X API"""
+    x_session = OAuth2Session(X_CLIENT_ID, token=token)
+    
+    # The bookmarks endpoint
+    bookmarks_url = f'https://api.twitter.com/2/users/{user_id}/bookmarks'
+    
+    # Parameters for the request
+    params = {
+        'max_results': 100,
+        'tweet.fields': 'created_at,author_id,text,public_metrics',
+        'user.fields': 'name,username,profile_image_url'
+    }
+    
+    try:
+        # Make the request to the bookmarks endpoint
+        response = x_session.get(bookmarks_url, params=params)
+        
+        print(f"Bookmarks API Response Status: {response.status_code}")
+        print(f"Bookmarks API Response Headers: {response.headers}")
+        
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 401:
+            # Token might be expired or invalid
+            return {
+                'error': True,
+                'message': 'Token expired or invalid (401 Unauthorized)',
+                'status_code': 401
+            }
+        elif response.status_code == 403:
+            # User might not have access to bookmarks
+            return {
+                'error': True,
+                'message': 'Access to bookmarks is forbidden (403 Forbidden)',
+                'status_code': 403
+            }
+        else:
+            # Handle other errors
+            error_msg = f"Error fetching bookmarks: {response.status_code}"
+            try:
+                error_data = response.json()
+                if 'errors' in error_data and error_data['errors']:
+                    error_msg = error_data['errors'][0].get('message', error_msg)
+            except:
+                pass
+                
+            return {
+                'error': True,
+                'message': error_msg,
+                'status_code': response.status_code
+            }
+    except Exception as e:
+        print(f"Exception fetching bookmarks: {str(e)}")
+        return {
+            'error': True,
+            'message': str(e),
+            'status_code': None
+        }
+
+
 @app.route('/profile')
 def profile():
     """Display the user's profile information"""
@@ -491,6 +553,29 @@ def refresh_token():
         'message': 'Token refreshed successfully',
         'token': new_token
     })
+
+
+@app.route('/test-bookmarks')
+def test_bookmarks():
+    """Test the access token by fetching user bookmarks"""
+    # Check if the user is logged in
+    token = session.get('oauth_token')
+    user_info = session.get('user_info')
+    
+    if not token or not user_info:
+        return jsonify({'success': False, 'message': 'No token or user info found in session'})
+    
+    # Get user ID from user info
+    user_id = user_info['data']['id']
+    
+    # Fetch bookmarks to test the token
+    bookmarks_result = fetch_user_bookmarks(token, user_id)
+    
+    # Add timestamp for debugging
+    bookmarks_result['test_timestamp'] = int(time.time())
+    bookmarks_result['token_timestamp'] = token.get('timestamp', 'unknown')
+    
+    return jsonify(bookmarks_result)
 
 
 if __name__ == '__main__':

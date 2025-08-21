@@ -80,11 +80,17 @@
                         {% endif %}
                     </p>
                     
-                    <button id="refreshButton" class="btn btn-primary mb-4" {% if not token.refresh_token %}disabled{% endif %}>
-                        <i class="bi bi-arrow-repeat me-2"></i> Refresh Token
-                    </button>
+                    <div class="d-flex gap-2 mb-4">
+                        <button id="refreshButton" class="btn btn-primary" {% if not token.refresh_token %}disabled{% endif %}>
+                            <i class="bi bi-arrow-repeat me-2"></i> Refresh Token
+                        </button>
+                        <button id="testBookmarksButton" class="btn btn-warning">
+                            <i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API
+                        </button>
+                    </div>
                     
                     <div id="refreshStatus" class="alert" style="display: none;"></div>
+                    <div id="bookmarksStatus" class="alert" style="display: none;"></div>
                     
                     <h5 class="text-x mb-3">Complete Token Information:</h5>
                     <div class="bg-black p-3 rounded">
@@ -134,6 +140,46 @@
             statusEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Error: ' + error.message;
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Try Again';
+        }
+    });
+    
+    document.getElementById('testBookmarksButton').addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Testing...';
+        
+        const statusEl = document.getElementById('bookmarksStatus');
+        statusEl.style.display = 'block';
+        statusEl.className = 'alert alert-info';
+        statusEl.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Testing bookmarks API...';
+        
+        try {
+            const response = await fetch('/test-bookmarks');
+            const data = await response.json();
+            
+            if (data.error) {
+                statusEl.className = 'alert alert-danger';
+                statusEl.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> 
+                    <strong>API Test Failed:</strong> ${data.message}
+                    <br><small class="text-muted">Status: ${data.status_code || 'Unknown'} | Test Time: ${new Date(data.test_timestamp * 1000).toLocaleString()}</small>
+                `;
+            } else {
+                statusEl.className = 'alert alert-success';
+                const bookmarkCount = data.data ? data.data.length : 0;
+                statusEl.innerHTML = `
+                    <i class="bi bi-check-circle-fill me-2"></i> 
+                    <strong>API Test Successful!</strong> Retrieved ${bookmarkCount} bookmarks
+                    <br><small class="text-muted">Test Time: ${new Date(data.test_timestamp * 1000).toLocaleString()} | Token Age: ${data.token_timestamp !== 'unknown' ? Math.round((data.test_timestamp - data.token_timestamp) / 60) + ' minutes' : 'Unknown'}</small>
+                `;
+            }
+            
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API';
+        } catch (error) {
+            statusEl.className = 'alert alert-danger';
+            statusEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Error: ' + error.message;
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API';
         }
     });
 </script>
