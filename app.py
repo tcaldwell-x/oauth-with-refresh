@@ -170,6 +170,14 @@ def login():
 @app.route('/callback')
 def callback():
     """Process the X OAuth 2.0 callback"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 80)
+    logger.info("OAUTH2 CALLBACK - DETAILED LOGGING")
+    logger.info("=" * 80)
+    logger.info(f"Callback timestamp: {int(time.time())}")
+    
     # Get request params
     request_state = request.args.get('state')
     
@@ -178,16 +186,18 @@ def callback():
     code_verifier = session.get('code_verifier')
     
     # Debug prints
-    print(f"Callback received")
-    print(f"State from request: {request_state}")
-    print(f"State from session: {session_state}")
-    print(f"Code verifier from session: {code_verifier}")
-    print(f"Request URL: {request.url}")
+    logger.info("CALLBACK REQUEST DETAILS:")
+    logger.info(f"  State from request: {request_state}")
+    logger.info(f"  State from session: {session_state}")
+    logger.info(f"  Code verifier from session: {code_verifier}")
+    logger.info(f"  Request URL: {request.url}")
+    logger.info(f"  Request method: {request.method}")
+    logger.info(f"  User agent: {request.headers.get('User-Agent', 'N/A')}")
     
     # If session state is missing but request state is present
     if not session_state and request_state:
         # We'll use the state from the request, which should include the code_verifier
-        print("Session state missing, using request state")
+        logger.warning("Session state missing, using request state")
         session_state = request_state
         
         # Try to extract code_verifier from state
@@ -196,12 +206,14 @@ def callback():
             state_parts = request_state.split(':', 1)
             if len(state_parts) == 2:
                 code_verifier = state_parts[1]
-                print(f"Extracted code_verifier from state: {code_verifier}")
+                logger.info(f"Extracted code_verifier from state: {code_verifier[:20]}...")
     
     # If state or code_verifier is still None, return error
     if not session_state:
+        logger.error("State is missing from session")
         return render_template('error.html', error="State is missing from session. Session may have expired.")
     if not code_verifier:
+        logger.error("Code verifier is missing from session")
         return render_template('error.html', error="Code verifier is missing. Session may have expired.")
     
     # Create the OAuth session with state
@@ -219,7 +231,7 @@ def callback():
         else:
             auth_response_url = request.url
         
-        print(f"Auth response URL: {auth_response_url}")
+        logger.info(f"Auth response URL: {auth_response_url}")
             
         # Fetch the access token using the authorization code and code verifier
         logger.info("Making OAuth2 token request...")
@@ -293,10 +305,10 @@ def callback():
         return redirect(url_for('trends'))
     
     except Exception as e:
-        print(f"Error in callback: {str(e)}")
-        print(f"Error type: {type(e).__name__}")
+        logger.error(f"Error in callback: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
         import traceback
-        traceback.print_exc()
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return render_template('error.html', error=str(e))
 
 
@@ -356,6 +368,9 @@ def fetch_user_info(token):
 
 def fetch_personalized_trends(token):
     """Fetch the user's personalized trends from X API"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
     
     # The personalized trends endpoint
@@ -365,8 +380,8 @@ def fetch_personalized_trends(token):
         # Make the request to the personalized trends endpoint
         response = x_session.get(trends_url)
         
-        print(f"Trends API Response Status: {response.status_code}")
-        print(f"Trends API Response Headers: {response.headers}")
+        logger.info(f"Trends API Response Status: {response.status_code}")
+        logger.info(f"Trends API Response Headers: {dict(response.headers)}")
         
         if response.status_code == 200:
             return response.json()
