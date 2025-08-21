@@ -301,6 +301,48 @@ def fetch_personalized_trends(token):
 
 def fetch_user_bookmarks(token, user_id):
     """Fetch the user's bookmarks from X API"""
+    import logging
+    
+    # Set up detailed logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    # Log detailed token information
+    logger.info("=" * 80)
+    logger.info("BOOKMARKS API TEST - DETAILED LOGGING")
+    logger.info("=" * 80)
+    logger.info(f"Test timestamp: {int(time.time())}")
+    logger.info(f"User ID: {user_id}")
+    
+    # Log complete token details
+    logger.info("TOKEN DETAILS:")
+    logger.info(f"  Access Token (first 20 chars): {token.get('access_token', 'N/A')[:20]}...")
+    logger.info(f"  Token Type: {token.get('token_type', 'N/A')}")
+    logger.info(f"  Expires At: {token.get('expires_at', 'N/A')}")
+    logger.info(f"  Expires In: {token.get('expires_in', 'N/A')}")
+    logger.info(f"  Scope: {token.get('scope', 'N/A')}")
+    logger.info(f"  Refresh Token (first 20 chars): {token.get('refresh_token', 'N/A')[:20] if token.get('refresh_token') else 'N/A'}...")
+    logger.info(f"  Token Timestamp: {token.get('timestamp', 'N/A')}")
+    
+    # Calculate token age
+    if token.get('timestamp'):
+        token_age = int(time.time()) - token['timestamp']
+        token_age_minutes = token_age // 60
+        token_age_seconds = token_age % 60
+        logger.info(f"  Token Age: {token_age_minutes} minutes, {token_age_seconds} seconds")
+    
+    # Calculate time until expiration
+    if token.get('expires_at'):
+        current_time = int(time.time())
+        expires_at = token['expires_at']
+        time_until_expiry = expires_at - current_time
+        if time_until_expiry > 0:
+            expiry_minutes = time_until_expiry // 60
+            expiry_seconds = time_until_expiry % 60
+            logger.info(f"  Time Until Expiry: {expiry_minutes} minutes, {expiry_seconds} seconds")
+        else:
+            logger.info(f"  Token Expired: {abs(time_until_expiry)} seconds ago")
+    
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
     
     # The bookmarks endpoint
@@ -313,38 +355,63 @@ def fetch_user_bookmarks(token, user_id):
         'user.fields': 'name,username,profile_image_url'
     }
     
+    logger.info("API REQUEST DETAILS:")
+    logger.info(f"  URL: {bookmarks_url}")
+    logger.info(f"  Parameters: {params}")
+    logger.info(f"  Client ID: {X_CLIENT_ID}")
+    
     try:
         # Make the request to the bookmarks endpoint
+        logger.info("Making API request...")
         response = x_session.get(bookmarks_url, params=params)
         
-        print(f"Bookmarks API Response Status: {response.status_code}")
-        print(f"Bookmarks API Response Headers: {response.headers}")
+        logger.info("API RESPONSE DETAILS:")
+        logger.info(f"  Status Code: {response.status_code}")
+        logger.info(f"  Response Headers: {dict(response.headers)}")
+        logger.info(f"  Response URL: {response.url}")
         
         if response.status_code == 200:
-            return response.json()
+            response_data = response.json()
+            logger.info("API CALL SUCCESSFUL")
+            logger.info(f"  Bookmarks Count: {len(response_data.get('data', []))}")
+            logger.info(f"  Response Keys: {list(response_data.keys())}")
+            return response_data
         elif response.status_code == 401:
-            # Token might be expired or invalid
+            logger.error("API CALL FAILED - 401 UNAUTHORIZED")
+            logger.error("  This indicates the token has expired or is invalid")
+            try:
+                error_data = response.json()
+                logger.error(f"  Error Response: {error_data}")
+            except:
+                logger.error(f"  Raw Response: {response.text}")
             return {
                 'error': True,
                 'message': 'Token expired or invalid (401 Unauthorized)',
                 'status_code': 401
             }
         elif response.status_code == 403:
-            # User might not have access to bookmarks
+            logger.error("API CALL FAILED - 403 FORBIDDEN")
+            logger.error("  This indicates access to bookmarks is forbidden")
+            try:
+                error_data = response.json()
+                logger.error(f"  Error Response: {error_data}")
+            except:
+                logger.error(f"  Raw Response: {response.text}")
             return {
                 'error': True,
                 'message': 'Access to bookmarks is forbidden (403 Forbidden)',
                 'status_code': 403
             }
         else:
-            # Handle other errors
+            logger.error(f"API CALL FAILED - STATUS CODE: {response.status_code}")
             error_msg = f"Error fetching bookmarks: {response.status_code}"
             try:
                 error_data = response.json()
+                logger.error(f"  Error Response: {error_data}")
                 if 'errors' in error_data and error_data['errors']:
                     error_msg = error_data['errors'][0].get('message', error_msg)
             except:
-                pass
+                logger.error(f"  Raw Response: {response.text}")
                 
             return {
                 'error': True,
@@ -352,12 +419,19 @@ def fetch_user_bookmarks(token, user_id):
                 'status_code': response.status_code
             }
     except Exception as e:
-        print(f"Exception fetching bookmarks: {str(e)}")
+        logger.error(f"EXCEPTION DURING API CALL: {str(e)}")
+        logger.error(f"Exception Type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return {
             'error': True,
             'message': str(e),
             'status_code': None
         }
+    finally:
+        logger.info("=" * 80)
+        logger.info("BOOKMARKS API TEST COMPLETED")
+        logger.info("=" * 80)
 
 
 @app.route('/profile')
@@ -558,22 +632,64 @@ def refresh_token():
 @app.route('/test-bookmarks')
 def test_bookmarks():
     """Test the access token by fetching user bookmarks"""
+    import logging
+    
+    # Set up logging for the endpoint
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 80)
+    logger.info("BOOKMARKS TEST ENDPOINT CALLED")
+    logger.info("=" * 80)
+    logger.info(f"Request timestamp: {int(time.time())}")
+    logger.info(f"Request URL: {request.url}")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"User agent: {request.headers.get('User-Agent', 'N/A')}")
+    
     # Check if the user is logged in
     token = session.get('oauth_token')
     user_info = session.get('user_info')
     
+    logger.info("SESSION INFORMATION:")
+    logger.info(f"  Session ID: {session.get('_id', 'N/A')}")
+    logger.info(f"  Token in session: {'Yes' if token else 'No'}")
+    logger.info(f"  User info in session: {'Yes' if user_info else 'No'}")
+    
     if not token or not user_info:
+        logger.error("MISSING SESSION DATA")
+        logger.error(f"  Token present: {bool(token)}")
+        logger.error(f"  User info present: {bool(user_info)}")
         return jsonify({'success': False, 'message': 'No token or user info found in session'})
     
     # Get user ID from user info
     user_id = user_info['data']['id']
+    logger.info(f"User ID from session: {user_id}")
+    
+    # Log session token details before making the API call
+    logger.info("SESSION TOKEN SUMMARY:")
+    logger.info(f"  Access Token (first 20 chars): {token.get('access_token', 'N/A')[:20]}...")
+    logger.info(f"  Token Type: {token.get('token_type', 'N/A')}")
+    logger.info(f"  Expires At: {token.get('expires_at', 'N/A')}")
+    logger.info(f"  Token Timestamp: {token.get('timestamp', 'N/A')}")
     
     # Fetch bookmarks to test the token
+    logger.info("Calling fetch_user_bookmarks function...")
     bookmarks_result = fetch_user_bookmarks(token, user_id)
     
     # Add timestamp for debugging
     bookmarks_result['test_timestamp'] = int(time.time())
     bookmarks_result['token_timestamp'] = token.get('timestamp', 'unknown')
+    
+    logger.info("TEST RESULT SUMMARY:")
+    logger.info(f"  Success: {not bookmarks_result.get('error', False)}")
+    logger.info(f"  Status Code: {bookmarks_result.get('status_code', 'N/A')}")
+    logger.info(f"  Message: {bookmarks_result.get('message', 'N/A')}")
+    logger.info(f"  Test Timestamp: {bookmarks_result['test_timestamp']}")
+    logger.info(f"  Token Timestamp: {bookmarks_result['token_timestamp']}")
+    
+    logger.info("=" * 80)
+    logger.info("BOOKMARKS TEST ENDPOINT COMPLETED")
+    logger.info("=" * 80)
     
     return jsonify(bookmarks_result)
 
