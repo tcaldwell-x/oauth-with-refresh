@@ -8,6 +8,7 @@ import base64
 import hashlib
 import time
 import datetime
+from flask_session import Session
 
 # Load environment variables
 load_dotenv()
@@ -15,16 +16,22 @@ load_dotenv()
 # Create Flask app
 app = Flask(__name__)
 
-# Configure session
+# Configure session for serverless environment
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
-# Using cookies instead of filesystem for serverless compatibility 
-# app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_PERMANENT'] = True  # Set to True for cookie-based sessions
+
+# For serverless environments, we'll use a simple in-memory session with larger cookie size
+# This is not ideal for production but works for debugging
+app.config['SESSION_TYPE'] = 'filesystem'  # This will fall back to in-memory if no filesystem
+app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'  # HTTPS only in production
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minute
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+app.config['SESSION_COOKIE_MAX_SIZE'] = 4096  # Increase cookie size limit
+
+# Initialize Flask-Session
+Session(app)
 
 # For production environments like Vercel, ensure HTTPS is used for callbacks
 if os.getenv('VERCEL_ENV') == 'production':
@@ -80,6 +87,37 @@ def _jinja2_filter_strftime(timestamp, fmt=None):
         fmt = '%Y-%m-%d %H:%M:%S'
     dt = datetime.datetime.fromtimestamp(timestamp)
     return dt.strftime(fmt)
+
+
+def debug_session():
+    """Debug function to log session information"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("SESSION DEBUG INFORMATION:")
+    logger.info(f"  Session ID: {session.get('_id', 'N/A')}")
+    logger.info(f"  Session Keys: {list(session.keys())}")
+    logger.info(f"  Session Modified: {session.modified}")
+    logger.info(f"  Session Permanent: {session.permanent}")
+    
+    # Check for token data
+    token = session.get('oauth_token')
+    user_info = session.get('user_info')
+    
+    logger.info(f"  OAuth Token Present: {bool(token)}")
+    logger.info(f"  User Info Present: {bool(user_info)}")
+    
+    if token:
+        logger.info(f"  Token Keys: {list(token.keys())}")
+        logger.info(f"  Token Type: {token.get('token_type', 'N/A')}")
+        logger.info(f"  Token Timestamp: {token.get('timestamp', 'N/A')}")
+    
+    return {
+        'session_id': session.get('_id', 'N/A'),
+        'session_keys': list(session.keys()),
+        'token_present': bool(token),
+        'user_info_present': bool(user_info)
+    }
 
 @app.route('/')
 def index():
@@ -533,6 +571,26 @@ def debug_twitter():
     return render_template('debug.html', debug=debug_info)
 
 
+@app.route('/debug-session')
+def debug_session_route():
+    """Debug endpoint to check session state"""
+    session_debug = debug_session()
+    
+    # Add additional session information
+    session_debug.update({
+        'request_cookies': dict(request.cookies),
+        'session_cookie_name': app.config.get('SESSION_COOKIE_NAME', 'session'),
+        'session_cookie_secure': app.config.get('SESSION_COOKIE_SECURE', False),
+        'session_cookie_httponly': app.config.get('SESSION_COOKIE_HTTPONLY', True),
+        'session_cookie_samesite': app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
+        'session_lifetime': app.config.get('PERMANENT_SESSION_LIFETIME', 1800),
+        'vercel_env': os.getenv('VERCEL_ENV'),
+        'vercel_url': os.getenv('VERCEL_URL')
+    })
+    
+    return jsonify(session_debug)
+
+
 def refresh_oauth_token(token):
     """Refresh the OAuth token using the refresh token"""
     if 'refresh_token' not in token:
@@ -650,10 +708,14 @@ def test_bookmarks():
     token = session.get('oauth_token')
     user_info = session.get('user_info')
     
+    # Get detailed session debug info
+    session_debug = debug_session()
+    
     logger.info("SESSION INFORMATION:")
-    logger.info(f"  Session ID: {session.get('_id', 'N/A')}")
-    logger.info(f"  Token in session: {'Yes' if token else 'No'}")
-    logger.info(f"  User info in session: {'Yes' if user_info else 'No'}")
+    logger.info(f"  Session ID: {session_debug['session_id']}")
+    logger.info(f"  Session Keys: {session_debug['session_keys']}")
+    logger.info(f"  Token in session: {'Yes' if session_debug['token_present'] else 'No'}")
+    logger.info(f"  User info in session: {'Yes' if session_debug['user_info_present'] else 'No'}")
     
     if not token or not user_info:
         logger.error("MISSING SESSION DATA")

@@ -87,10 +87,14 @@
                         <button id="testBookmarksButton" class="btn btn-warning">
                             <i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API
                         </button>
+                        <button id="debugSessionButton" class="btn btn-info">
+                            <i class="bi bi-bug me-2"></i> Debug Session
+                        </button>
                     </div>
                     
                     <div id="refreshStatus" class="alert" style="display: none;"></div>
                     <div id="bookmarksStatus" class="alert" style="display: none;"></div>
+                    <div id="debugSessionStatus" class="alert" style="display: none;"></div>
                     
                     <h5 class="text-x mb-3">Complete Token Information:</h5>
                     <div class="bg-black p-3 rounded">
@@ -180,6 +184,44 @@
             statusEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Error: ' + error.message;
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API';
+        }
+    });
+    
+    document.getElementById('debugSessionButton').addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Debugging...';
+        
+        const statusEl = document.getElementById('debugSessionStatus');
+        statusEl.style.display = 'block';
+        statusEl.className = 'alert alert-info';
+        statusEl.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Checking session state...';
+        
+        try {
+            const response = await fetch('/debug-session');
+            const data = await response.json();
+            
+            statusEl.className = 'alert alert-info';
+            statusEl.innerHTML = `
+                <i class="bi bi-info-circle-fill me-2"></i> 
+                <strong>Session Debug Information:</strong>
+                <br><small class="text-muted">
+                Session ID: ${data.session_id}<br>
+                Session Keys: ${data.session_keys.join(', ') || 'None'}<br>
+                Token Present: ${data.token_present}<br>
+                User Info Present: ${data.user_info_present}<br>
+                Vercel Environment: ${data.vercel_env || 'Not set'}<br>
+                Session Cookie Secure: ${data.session_cookie_secure}<br>
+                Session Lifetime: ${data.session_lifetime} seconds
+                </small>
+            `;
+            
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-bug me-2"></i> Debug Session';
+        } catch (error) {
+            statusEl.className = 'alert alert-danger';
+            statusEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Error: ' + error.message;
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-bug me-2"></i> Debug Session';
         }
     });
 </script>
