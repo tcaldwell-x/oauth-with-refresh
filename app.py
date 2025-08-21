@@ -222,12 +222,62 @@ def callback():
         print(f"Auth response URL: {auth_response_url}")
             
         # Fetch the access token using the authorization code and code verifier
+        logger.info("Making OAuth2 token request...")
+        logger.info(f"  Token URL: {TOKEN_URL}")
+        logger.info(f"  Authorization Response URL: {auth_response_url}")
+        logger.info(f"  Code Verifier: {code_verifier[:20]}...")
+        
         token = x_session.fetch_token(
             TOKEN_URL,
             client_secret=X_CLIENT_SECRET,
             authorization_response=auth_response_url,
             code_verifier=code_verifier
         )
+        
+        # Log the response details from the token request
+        logger.info("OAUTH2 TOKEN RESPONSE DETAILS:")
+        logger.info(f"  Token Response Keys: {list(token.keys())}")
+        logger.info(f"  Access Token (first 20 chars): {token.get('access_token', 'N/A')[:20]}...")
+        logger.info(f"  Token Type: {token.get('token_type', 'N/A')}")
+        logger.info(f"  Expires In: {token.get('expires_in', 'N/A')}")
+        logger.info(f"  Scope: {token.get('scope', 'N/A')}")
+        logger.info(f"  Refresh Token Present: {'Yes' if token.get('refresh_token') else 'No'}")
+        
+        # Note: The requests_oauthlib library doesn't expose response headers directly
+        # We'll need to capture them by making the request manually if needed
+        
+        # Let's also make a manual request to capture full response headers
+        logger.info("Making manual OAuth2 token request to capture headers...")
+        import requests
+        
+        # Prepare the token request data
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': request.args.get('code'),
+            'redirect_uri': X_REDIRECT_URI,
+            'client_id': X_CLIENT_ID,
+            'code_verifier': code_verifier
+        }
+        
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': f'Basic {base64.b64encode(f"{X_CLIENT_ID}:{X_CLIENT_SECRET}".encode()).decode()}'
+        }
+        
+        try:
+            manual_response = requests.post(TOKEN_URL, data=token_data, headers=headers)
+            logger.info("MANUAL OAUTH2 TOKEN REQUEST RESPONSE HEADERS:")
+            logger.info(f"  Status Code: {manual_response.status_code}")
+            logger.info(f"  Response URL: {manual_response.url}")
+            logger.info("  Full Response Headers:")
+            for header_name, header_value in manual_response.headers.items():
+                logger.info(f"    {header_name}: {header_value}")
+            
+            if manual_response.status_code != 200:
+                logger.error(f"  Manual request failed with status: {manual_response.status_code}")
+                logger.error(f"  Response body: {manual_response.text}")
+        except Exception as e:
+            logger.error(f"  Manual request failed with exception: {str(e)}")
         
         # Add a timestamp to the token for tracking expiration
         token['timestamp'] = int(time.time())
@@ -252,6 +302,13 @@ def callback():
 
 def fetch_user_info(token):
     """Fetch the user's information from X API"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 60)
+    logger.info("FETCHING USER INFO - DETAILED LOGGING")
+    logger.info("=" * 60)
+    
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
     
     # Include user fields to get more information
@@ -259,14 +316,42 @@ def fetch_user_info(token):
         'user.fields': 'name,username,profile_image_url,description'
     }
     
+    logger.info("USER INFO REQUEST DETAILS:")
+    logger.info(f"  URL: {USERINFO_URL}")
+    logger.info(f"  Parameters: {params}")
+    logger.info(f"  Access Token (first 20 chars): {token.get('access_token', 'N/A')[:20]}...")
+    
     # Make the request to the userinfo endpoint
+    logger.info("Making user info request...")
     response = x_session.get(USERINFO_URL, params=params)
     
+    logger.info("USER INFO RESPONSE DETAILS:")
+    logger.info(f"  Status Code: {response.status_code}")
+    logger.info(f"  Response URL: {response.url}")
+    logger.info("  Full Response Headers:")
+    for header_name, header_value in response.headers.items():
+        logger.info(f"    {header_name}: {header_value}")
+    
     if response.status_code == 200:
-        return response.json()
+        user_data = response.json()
+        logger.info("USER INFO REQUEST SUCCESSFUL")
+        logger.info(f"  User Data Keys: {list(user_data.keys())}")
+        if 'data' in user_data:
+            logger.info(f"  User ID: {user_data['data'].get('id', 'N/A')}")
+            logger.info(f"  Username: {user_data['data'].get('username', 'N/A')}")
+        return user_data
     else:
-        # Handle error
+        logger.error(f"USER INFO REQUEST FAILED - Status: {response.status_code}")
+        try:
+            error_data = response.json()
+            logger.error(f"  Error Response: {error_data}")
+        except:
+            logger.error(f"  Raw Response: {response.text}")
         return {'error': f"Error fetching user info: {response.status_code}"}
+    
+    logger.info("=" * 60)
+    logger.info("USER INFO REQUEST COMPLETED")
+    logger.info("=" * 60)
 
 
 def fetch_personalized_trends(token):
@@ -593,10 +678,19 @@ def debug_session_route():
 
 def refresh_oauth_token(token):
     """Refresh the OAuth token using the refresh token"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 60)
+    logger.info("REFRESHING OAUTH TOKEN - DETAILED LOGGING")
+    logger.info("=" * 60)
+    
     if 'refresh_token' not in token:
+        logger.error("No refresh token available")
         return {'error': 'No refresh token available'}
     
     refresh_token = token['refresh_token']
+    logger.info(f"Refresh Token (first 20 chars): {refresh_token[:20]}...")
     
     # Create a new OAuth session
     x_session = OAuth2Session(X_CLIENT_ID)
@@ -610,36 +704,65 @@ def refresh_oauth_token(token):
     }
     headers = {}
 
+    logger.info("REFRESH TOKEN REQUEST DETAILS:")
+    logger.info(f"  URL: {TOKEN_URL}")
+    logger.info(f"  Token Data: {token_data}")
+    logger.info(f"  Headers: {headers}")
+
     try:
         # Make a POST request to refresh the token
+        logger.info("Making refresh token request...")
         response = x_session.post(TOKEN_URL, data=token_data, headers=headers)
         
-        print(f"HEADERS: {response.headers}")
+        logger.info("REFRESH TOKEN RESPONSE DETAILS:")
+        logger.info(f"  Status Code: {response.status_code}")
+        logger.info(f"  Response URL: {response.url}")
+        logger.info("  Full Response Headers:")
+        for header_name, header_value in response.headers.items():
+            logger.info(f"    {header_name}: {header_value}")
+        
         if response.status_code == 200:
             new_token = response.json()
+            logger.info("REFRESH TOKEN REQUEST SUCCESSFUL")
+            logger.info(f"  New Token Keys: {list(new_token.keys())}")
+            logger.info(f"  New Access Token (first 20 chars): {new_token.get('access_token', 'N/A')[:20]}...")
+            logger.info(f"  New Token Type: {new_token.get('token_type', 'N/A')}")
+            logger.info(f"  New Expires In: {new_token.get('expires_in', 'N/A')}")
+            logger.info(f"  New Refresh Token Present: {'Yes' if new_token.get('refresh_token') else 'No'}")
             
             # If the response doesn't include a refresh token, add the old one
             if 'refresh_token' not in new_token and refresh_token:
                 new_token['refresh_token'] = refresh_token
+                logger.info("  Using old refresh token (not provided in response)")
                 
             # Update the token timestamp
             new_token['timestamp'] = int(time.time())
             
             return new_token
         else:
+            logger.error(f"REFRESH TOKEN REQUEST FAILED - Status: {response.status_code}")
             error_msg = f"Failed to refresh token: {response.status_code}"
             try:
                 error_data = response.json()
+                logger.error(f"  Error Response: {error_data}")
                 if 'error_description' in error_data:
                     error_msg = error_data['error_description']
                 elif 'error' in error_data:
                     error_msg = error_data['error']
             except Exception:
-                pass
+                logger.error(f"  Raw Response: {response.text}")
                 
             return {'error': error_msg}
     except Exception as e:
+        logger.error(f"REFRESH TOKEN REQUEST EXCEPTION: {str(e)}")
+        logger.error(f"Exception Type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return {'error': str(e)}
+    
+    logger.info("=" * 60)
+    logger.info("REFRESH TOKEN REQUEST COMPLETED")
+    logger.info("=" * 60)
 
 
 @app.route('/token')
