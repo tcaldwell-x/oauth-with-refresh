@@ -38,16 +38,19 @@ else:
 X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
+# Production domain configuration
+PRODUCTION_DOMAIN = os.getenv('PRODUCTION_DOMAIN', 'oauth-with-refresh-rust.vercel.app')
+
 # Get the appropriate redirect URI based on environment
-if os.getenv('VERCEL_ENV') == 'production' and os.getenv('X_REDIRECT_URI'):
-    # Use custom domain for production
+if os.getenv('X_REDIRECT_URI'):
+    # Use custom configured redirect URI (highest priority)
     X_REDIRECT_URI = os.getenv('X_REDIRECT_URI')
+elif os.getenv('VERCEL_ENV') == 'production':
+    # Use production domain for production deployments
+    X_REDIRECT_URI = f"https://{PRODUCTION_DOMAIN}/callback"
 elif os.getenv('VERCEL_URL') and os.getenv('VERCEL_ENV') != 'production':
     # Use Vercel URL for preview deployments
     X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
-elif os.getenv('X_REDIRECT_URI'):
-    # Custom configured redirect URI
-    X_REDIRECT_URI = os.getenv('X_REDIRECT_URI')
 else:
     # Local development
     X_REDIRECT_URI = "http://127.0.0.1:5000/callback"
@@ -900,9 +903,11 @@ def test_config():
         'success': True,
         'vercel_url': os.getenv('VERCEL_URL'),
         'vercel_env': os.getenv('VERCEL_ENV'),
+        'production_domain': PRODUCTION_DOMAIN,
         'x_redirect_uri_env': os.getenv('X_REDIRECT_URI'),
         'current_redirect_uri': X_REDIRECT_URI,
         'expected_callback': f"https://{os.getenv('VERCEL_URL')}/callback" if os.getenv('VERCEL_URL') else "Not set",
+        'production_callback': f"https://{PRODUCTION_DOMAIN}/callback",
         'client_id': X_CLIENT_ID[:20] + "..." if X_CLIENT_ID else "Not set",
         'client_secret': "Set" if X_CLIENT_SECRET else "Not set",
         'deployment_type': 'production' if os.getenv('VERCEL_ENV') == 'production' else 'preview'
