@@ -8,7 +8,6 @@ import base64
 import hashlib
 import time
 import datetime
-from flask_session import Session
 
 # Load environment variables
 load_dotenv()
@@ -19,19 +18,12 @@ app = Flask(__name__)
 # Configure session for serverless environment
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
 
-# For serverless environments, use simple cookie-based sessions
-# This avoids filesystem issues in serverless environments
-app.config['SESSION_TYPE'] = 'null'  # Use null session type for cookie-based storage
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_USE_SIGNER'] = True
+# Use Flask's built-in session management (cookie-based)
+# This is more reliable for serverless environments
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
-app.config['SESSION_COOKIE_MAX_SIZE'] = 4096  # Increase cookie size limit
-
-# Initialize Flask-Session
-Session(app)
 
 # For production environments like Vercel, ensure HTTPS is used for callbacks
 if os.getenv('VERCEL_ENV') == 'production':
@@ -750,66 +742,96 @@ def debug_twitter():
 @app.route('/debug-session')
 def debug_session_route():
     """Debug endpoint to check session state"""
-    session_debug = debug_session()
-    
-    # Add additional session information
-    session_debug.update({
-        'request_cookies': dict(request.cookies),
-        'session_cookie_name': app.config.get('SESSION_COOKIE_NAME', 'session'),
-        'session_cookie_secure': app.config.get('SESSION_COOKIE_SECURE', False),
-        'session_cookie_httponly': app.config.get('SESSION_COOKIE_HTTPONLY', True),
-        'session_cookie_samesite': app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
-        'session_lifetime': app.config.get('PERMANENT_SESSION_LIFETIME', 1800),
-        'vercel_env': os.getenv('VERCEL_ENV'),
-        'vercel_url': os.getenv('VERCEL_URL')
-    })
-    
-    return jsonify(session_debug)
+    try:
+        session_debug = debug_session()
+        
+        # Add additional session information
+        session_debug.update({
+            'request_cookies': dict(request.cookies),
+            'session_cookie_name': app.config.get('SESSION_COOKIE_NAME', 'session'),
+            'session_cookie_secure': app.config.get('SESSION_COOKIE_SECURE', False),
+            'session_cookie_httponly': app.config.get('SESSION_COOKIE_HTTPONLY', True),
+            'session_cookie_samesite': app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
+            'session_lifetime': app.config.get('PERMANENT_SESSION_LIFETIME', 1800),
+            'vercel_env': os.getenv('VERCEL_ENV'),
+            'vercel_url': os.getenv('VERCEL_URL')
+        })
+        
+        return jsonify(session_debug)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in debug-session: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
 
 
 @app.route('/test-session')
 def test_session():
     """Test endpoint to verify session is working"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Set a test value in session
-    session['test_value'] = f"test_{int(time.time())}"
-    session.modified = True
-    
-    logger.info("TEST SESSION:")
-    logger.info(f"  Set test_value: {session['test_value']}")
-    logger.info(f"  Session keys: {list(session.keys())}")
-    logger.info(f"  Session modified: {session.modified}")
-    
-    return jsonify({
-        'success': True,
-        'test_value': session['test_value'],
-        'session_keys': list(session.keys()),
-        'session_modified': session.modified,
-        'session_id': session.get('_id', 'N/A'),
-        'session_type': app.config.get('SESSION_TYPE', 'unknown')
-    })
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Set a test value in session
+        session['test_value'] = f"test_{int(time.time())}"
+        session.modified = True
+        
+        logger.info("TEST SESSION:")
+        logger.info(f"  Set test_value: {session['test_value']}")
+        logger.info(f"  Session keys: {list(session.keys())}")
+        logger.info(f"  Session modified: {session.modified}")
+        
+        return jsonify({
+            'success': True,
+            'test_value': session['test_value'],
+            'session_keys': list(session.keys()),
+            'session_modified': session.modified,
+            'session_id': session.get('_id', 'N/A'),
+            'session_type': 'built-in'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in test-session: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
 
 
 @app.route('/test-session-read')
 def test_session_read():
     """Test endpoint to read session data"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    test_value = session.get('test_value', 'Not found')
-    
-    logger.info("TEST SESSION READ:")
-    logger.info(f"  Retrieved test_value: {test_value}")
-    logger.info(f"  Session keys: {list(session.keys())}")
-    
-    return jsonify({
-        'success': True,
-        'test_value': test_value,
-        'session_keys': list(session.keys()),
-        'session_id': session.get('_id', 'N/A')
-    })
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        test_value = session.get('test_value', 'Not found')
+        
+        logger.info("TEST SESSION READ:")
+        logger.info(f"  Retrieved test_value: {test_value}")
+        logger.info(f"  Session keys: {list(session.keys())}")
+        
+        return jsonify({
+            'success': True,
+            'test_value': test_value,
+            'session_keys': list(session.keys()),
+            'session_id': session.get('_id', 'N/A')
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in test-session-read: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
 
 
 def refresh_oauth_token(token):
