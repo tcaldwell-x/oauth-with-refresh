@@ -33,6 +33,9 @@
                         <button id="debugSessionBtn" class="btn btn-outline-info btn-sm">
                             <i class="bi bi-info-circle me-1"></i> Debug Session
                         </button>
+                        <button id="testConfigBtn" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-gear me-1"></i> Test Config
+                        </button>
                     </div>
                 </div>
             </div>
@@ -92,6 +95,29 @@
             alert('Error debugging session: ' + error.message);
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-info-circle me-1"></i> Debug Session';
+        }
+    });
+    
+    document.getElementById('testConfigBtn').addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Testing...';
+        
+        try {
+            const response = await fetch('/test-config');
+            const data = await response.json();
+            
+            const debugDiv = document.getElementById('debugResults');
+            const debugOutput = document.getElementById('debugOutput');
+            
+            debugOutput.textContent = JSON.stringify(data, null, 2);
+            debugDiv.style.display = 'block';
+            
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-gear me-1"></i> Test Config';
+        } catch (error) {
+            alert('Error testing config: ' + error.message);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-gear me-1"></i> Test Config';
         }
     });
 </script>

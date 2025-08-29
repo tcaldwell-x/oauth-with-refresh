@@ -8,6 +8,7 @@ import base64
 import hashlib
 import time
 import datetime
+import urllib.parse
 
 # Load environment variables
 load_dotenv()
@@ -38,7 +39,10 @@ X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
 # Get the appropriate redirect URI based on environment
-if os.getenv('X_REDIRECT_URI'):
+if os.getenv('VERCEL_URL'):
+    # Use the current Vercel URL for the callback
+    X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
+elif os.getenv('X_REDIRECT_URI'):
     # Custom configured redirect URI
     X_REDIRECT_URI = os.getenv('X_REDIRECT_URI')
 else:
@@ -688,7 +692,9 @@ def debug_twitter():
         "auth_url": AUTHORIZATION_BASE_URL,
         "token_url": TOKEN_URL,
         "vercel_url": os.getenv('VERCEL_URL'),
-        "x_redirect_uri_env": os.getenv('X_REDIRECT_URI')
+        "x_redirect_uri_env": os.getenv('X_REDIRECT_URI'),
+        "current_vercel_url": os.getenv('VERCEL_URL'),
+        "expected_callback_url": f"https://{os.getenv('VERCEL_URL')}/callback" if os.getenv('VERCEL_URL') else "Not set"
     }
     
     # Generate a test code verifier and challenge (without storing in session)
@@ -730,8 +736,13 @@ def debug_twitter():
         issues.append("Redirect URI contains 'localhost' which Twitter might not accept. Use 127.0.0.1 instead.")
     
     # For Vercel deployments
-    if os.getenv('VERCEL_URL') and not X_REDIRECT_URI.startswith(f"https://{os.getenv('VERCEL_URL')}"):
-        issues.append(f"Redirect URI doesn't match Vercel URL. Expected: https://{os.getenv('VERCEL_URL')}/callback")
+    if os.getenv('VERCEL_URL'):
+        expected_callback = f"https://{os.getenv('VERCEL_URL')}/callback"
+        if X_REDIRECT_URI != expected_callback:
+            issues.append(f"Redirect URI mismatch. Current: {X_REDIRECT_URI}, Expected: {expected_callback}")
+            issues.append("The app will now automatically use the correct Vercel URL for callbacks")
+    else:
+        issues.append("VERCEL_URL environment variable not set")
     
     debug_info["issues"] = issues
     debug_info["session_cookie_secure"] = app.config.get('SESSION_COOKIE_SECURE', False)
@@ -832,6 +843,20 @@ def test_session_read():
             'error': str(e),
             'error_type': type(e).__name__
         }), 500
+
+
+@app.route('/test-config')
+def test_config():
+    """Test endpoint to show current configuration"""
+    return jsonify({
+        'success': True,
+        'vercel_url': os.getenv('VERCEL_URL'),
+        'x_redirect_uri_env': os.getenv('X_REDIRECT_URI'),
+        'current_redirect_uri': X_REDIRECT_URI,
+        'expected_callback': f"https://{os.getenv('VERCEL_URL')}/callback" if os.getenv('VERCEL_URL') else "Not set",
+        'client_id': X_CLIENT_ID[:20] + "..." if X_CLIENT_ID else "Not set",
+        'client_secret': "Set" if X_CLIENT_SECRET else "Not set"
+    })
 
 
 def refresh_oauth_token(token):
