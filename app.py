@@ -366,7 +366,6 @@ def callback():
         # Get and decode the authorization code
         raw_code = request.args.get('code')
         # The code might be URL-encoded, so let's decode it
-        import urllib.parse
         authorization_code = urllib.parse.unquote(raw_code) if raw_code else None
         
         logger.info("AUTHORIZATION CODE PROCESSING:")
