@@ -48,7 +48,7 @@ if os.getenv('X_REDIRECT_URI'):
 elif os.getenv('VERCEL_ENV') == 'production':
     # Use production domain for production deployments
     X_REDIRECT_URI = f"https://{PRODUCTION_DOMAIN}/callback"
-elif os.getenv('VERCEL_URL') and os.getenv('VERCEL_ENV') != 'production':
+elif os.getenv('VERCEL_URL'):
     # Use Vercel URL for preview deployments
     X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
 else:
