@@ -1,3 +1,4 @@
+# OAuth2.0 Debug Application - Fixed indentation issues
 import os
 import json
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
@@ -25,6 +26,16 @@ app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+
+# Add error handling for app initialization
+try:
+    # Test basic app functionality
+    with app.app_context():
+        pass
+except Exception as e:
+    print(f"Error initializing Flask app: {str(e)}")
+    import traceback
+    traceback.print_exc()
 
 # For production environments like Vercel, ensure HTTPS is used for callbacks
 if os.getenv('VERCEL_ENV') == 'production':
@@ -127,6 +138,31 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint to verify the app is working"""
+    try:
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': int(time.time()),
+            'vercel_env': os.getenv('VERCEL_ENV'),
+            'vercel_url': os.getenv('VERCEL_URL'),
+            'app_config': {
+                'secret_key_set': bool(app.config.get('SECRET_KEY')),
+                'session_cookie_secure': app.config.get('SESSION_COOKIE_SECURE'),
+                'session_cookie_httponly': app.config.get('SESSION_COOKIE_HTTPONLY'),
+                'session_lifetime': app.config.get('PERMANENT_SESSION_LIFETIME')
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'timestamp': int(time.time())
+        }), 500
+
+
 @app.route('/login')
 def login():
     """Redirect to X authorization page with PKCE"""
@@ -158,15 +194,15 @@ def login():
     logger.info(f"  Combined State: {combined_state[:50]}...")
     logger.info(f"  Code Verifier Length: {len(code_verifier)}")
     
-            # Create OAuth session
-        x_session = OAuth2Session(
-            X_CLIENT_ID,
-            redirect_uri=X_REDIRECT_URI,
-            scope=SCOPES
-        )
-        
-        # Add X-B3-Flags header to the session
-        x_session.headers.update({'X-B3-Flags': '1'})
+    # Create OAuth session
+    x_session = OAuth2Session(
+        X_CLIENT_ID,
+        redirect_uri=X_REDIRECT_URI,
+        scope=SCOPES
+    )
+    
+    # Add X-B3-Flags header to the session
+    x_session.headers.update({'X-B3-Flags': '1'})
     
     logger.info("OAUTH2 CONFIGURATION:")
     logger.info(f"  Client ID: {X_CLIENT_ID}")
@@ -1195,4 +1231,9 @@ def test_bookmarks():
 
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    try:
+        app.run(debug=True)
+    except Exception as e:
+        print(f"Error running Flask app: {str(e)}")
+        import traceback
+        traceback.print_exc() 
