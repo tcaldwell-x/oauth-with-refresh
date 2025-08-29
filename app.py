@@ -158,12 +158,15 @@ def login():
     logger.info(f"  Combined State: {combined_state[:50]}...")
     logger.info(f"  Code Verifier Length: {len(code_verifier)}")
     
-    # Create OAuth session
-    x_session = OAuth2Session(
-        X_CLIENT_ID,
-        redirect_uri=X_REDIRECT_URI,
-        scope=SCOPES
-    )
+            # Create OAuth session
+        x_session = OAuth2Session(
+            X_CLIENT_ID,
+            redirect_uri=X_REDIRECT_URI,
+            scope=SCOPES
+        )
+        
+        # Add X-B3-Flags header to the session
+        x_session.headers.update({'X-B3-Flags': '1'})
     
     logger.info("OAUTH2 CONFIGURATION:")
     logger.info(f"  Client ID: {X_CLIENT_ID}")
@@ -316,6 +319,9 @@ def callback():
         state=session_state
     )
     
+    # Add X-B3-Flags header to the session
+    x_session.headers.update({'X-B3-Flags': '1'})
+    
     try:
         # Get the full URL for authorization response
         if request.url.startswith('http://') and os.getenv('VERCEL_URL'):
@@ -383,7 +389,8 @@ def callback():
         
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': f'Basic {base64.b64encode(f"{X_CLIENT_ID}:{X_CLIENT_SECRET}".encode()).decode()}'
+            'Authorization': f'Basic {base64.b64encode(f"{X_CLIENT_ID}:{X_CLIENT_SECRET}".encode()).decode()}',
+            'X-B3-Flags': '1'
         }
         
         try:
@@ -394,6 +401,13 @@ def callback():
             logger.info("  Full Response Headers:")
             for header_name, header_value in manual_response.headers.items():
                 logger.info(f"    {header_name}: {header_value}")
+            
+            # Specifically log x-transaction-id if present
+            x_transaction_id = manual_response.headers.get('x-transaction-id')
+            if x_transaction_id:
+                logger.info(f"  X-Transaction-ID: {x_transaction_id}")
+            else:
+                logger.info("  X-Transaction-ID: Not present in response headers")
             
             if manual_response.status_code != 200:
                 logger.error(f"  Manual request failed with status: {manual_response.status_code}")
@@ -445,6 +459,9 @@ def fetch_user_info(token):
     
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
     
+    # Add X-B3-Flags header to the session
+    x_session.headers.update({'X-B3-Flags': '1'})
+    
     # Include user fields to get more information
     params = {
         'user.fields': 'name,username,profile_image_url,description'
@@ -494,6 +511,9 @@ def fetch_personalized_trends(token):
     logger = logging.getLogger(__name__)
     
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
+    
+    # Add X-B3-Flags header to the session
+    x_session.headers.update({'X-B3-Flags': '1'})
     
     # The personalized trends endpoint
     trends_url = 'https://api.twitter.com/2/users/personalized_trends'
@@ -604,6 +624,9 @@ def fetch_user_bookmarks(token, user_id):
             logger.info(f"  Token Expired: {abs(time_until_expiry)} seconds ago")
     
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
+    
+    # Add X-B3-Flags header to the session
+    x_session.headers.update({'X-B3-Flags': '1'})
     
     # The bookmarks endpoint
     bookmarks_url = f'https://api.twitter.com/2/users/{user_id}/bookmarks'
@@ -985,7 +1008,9 @@ def refresh_oauth_token(token):
         'client_id': X_CLIENT_ID
         # 'client_secret': X_CLIENT_SECRET
     }
-    headers = {}
+    headers = {
+        'X-B3-Flags': '1'
+    }
 
     logger.info("REFRESH TOKEN REQUEST DETAILS:")
     logger.info(f"  URL: {TOKEN_URL}")
@@ -1003,6 +1028,13 @@ def refresh_oauth_token(token):
         logger.info("  Full Response Headers:")
         for header_name, header_value in response.headers.items():
             logger.info(f"    {header_name}: {header_value}")
+        
+        # Specifically log x-transaction-id if present
+        x_transaction_id = response.headers.get('x-transaction-id')
+        if x_transaction_id:
+            logger.info(f"  X-Transaction-ID: {x_transaction_id}")
+        else:
+            logger.info("  X-Transaction-ID: Not present in response headers")
         
         if response.status_code == 200:
             new_token = response.json()
