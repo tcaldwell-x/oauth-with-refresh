@@ -39,8 +39,11 @@ X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
 # Get the appropriate redirect URI based on environment
-if os.getenv('VERCEL_URL'):
-    # Use the current Vercel URL for the callback
+if os.getenv('VERCEL_ENV') == 'production' and os.getenv('X_REDIRECT_URI'):
+    # Use custom domain for production
+    X_REDIRECT_URI = os.getenv('X_REDIRECT_URI')
+elif os.getenv('VERCEL_URL') and os.getenv('VERCEL_ENV') != 'production':
+    # Use Vercel URL for preview deployments
     X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
 elif os.getenv('X_REDIRECT_URI'):
     # Custom configured redirect URI
@@ -209,6 +212,10 @@ def callback():
     logger.info("OAUTH2 CALLBACK - DETAILED LOGGING")
     logger.info("=" * 80)
     logger.info(f"Callback timestamp: {int(time.time())}")
+    logger.info(f"Callback function called successfully")
+    logger.info(f"Request URL: {request.url}")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Request args: {dict(request.args)}")
     
     # Get request params
     request_state = request.args.get('state')
@@ -410,7 +417,19 @@ def callback():
         logger.error(f"Error type: {type(e).__name__}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        return render_template('error.html', error=str(e))
+        
+        # Return a more detailed error page
+        error_details = {
+            'error_message': str(e),
+            'error_type': type(e).__name__,
+            'timestamp': int(time.time()),
+            'request_url': request.url,
+            'request_method': request.method
+        }
+        
+        return render_template('error.html', 
+                              error=f"OAuth Callback Error: {str(e)}", 
+                              error_details=error_details)
 
 
 def fetch_user_info(token):
@@ -880,11 +899,13 @@ def test_config():
     return jsonify({
         'success': True,
         'vercel_url': os.getenv('VERCEL_URL'),
+        'vercel_env': os.getenv('VERCEL_ENV'),
         'x_redirect_uri_env': os.getenv('X_REDIRECT_URI'),
         'current_redirect_uri': X_REDIRECT_URI,
         'expected_callback': f"https://{os.getenv('VERCEL_URL')}/callback" if os.getenv('VERCEL_URL') else "Not set",
         'client_id': X_CLIENT_ID[:20] + "..." if X_CLIENT_ID else "Not set",
-        'client_secret': "Set" if X_CLIENT_SECRET else "Not set"
+        'client_secret': "Set" if X_CLIENT_SECRET else "Not set",
+        'deployment_type': 'production' if os.getenv('VERCEL_ENV') == 'production' else 'preview'
     })
 
 
@@ -917,6 +938,20 @@ def test_state_extraction():
         'extracted_verifier_length': len(extracted_verifier) if extracted_verifier else 0,
         'state_contains_colon': ':' in test_combined_state,
         'state_parts_count': len(test_combined_state.split(':', 1)) if ':' in test_combined_state else 0
+    })
+
+
+@app.route('/test-callback')
+def test_callback():
+    """Test endpoint to verify callback URL is accessible"""
+    return jsonify({
+        'success': True,
+        'message': 'Callback endpoint is accessible',
+        'timestamp': int(time.time()),
+        'request_url': request.url,
+        'request_method': request.method,
+        'request_args': dict(request.args),
+        'request_headers': dict(request.headers)
     })
 
 
