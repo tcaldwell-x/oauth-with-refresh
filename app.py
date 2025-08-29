@@ -128,16 +128,30 @@ def index():
 @app.route('/login')
 def login():
     """Redirect to X authorization page with PKCE"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 80)
+    logger.info("OAUTH2 LOGIN - DETAILED LOGGING")
+    logger.info("=" * 80)
+    logger.info(f"Login timestamp: {int(time.time())}")
+    
     # Generate code verifier and challenge for PKCE
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
     
+    logger.info("PKCE DETAILS:")
+    logger.info(f"  Code Verifier: {code_verifier}")
+    logger.info(f"  Code Challenge: {code_challenge}")
+    
     # Store the verifier in session for later use in callback
     session['code_verifier'] = code_verifier
+    logger.info("  Code verifier stored in session")
     
     # Create a combined state that includes the verifier
     # This is a backup in case sessions don't work
     combined_state = f"{secrets.token_urlsafe(16)}:{code_verifier}"
+    logger.info(f"  Combined State: {combined_state}")
     
     # Create OAuth session
     x_session = OAuth2Session(
@@ -145,6 +159,12 @@ def login():
         redirect_uri=X_REDIRECT_URI,
         scope=SCOPES
     )
+    
+    logger.info("OAUTH2 CONFIGURATION:")
+    logger.info(f"  Client ID: {X_CLIENT_ID}")
+    logger.info(f"  Redirect URI: {X_REDIRECT_URI}")
+    logger.info(f"  Scopes: {SCOPES}")
+    logger.info(f"  Authorization Base URL: {AUTHORIZATION_BASE_URL}")
     
     # Create the authorization URL with PKCE
     authorization_url, state = x_session.authorization_url(
@@ -154,15 +174,20 @@ def login():
         state=combined_state  # Use our combined state
     )
     
-    # Debug prints
-    print(f"Code Verifier: {code_verifier}")
-    print(f"Code Challenge: {code_challenge}")
-    print(f"Authorization URL: {authorization_url}")
-    print(f"Combined State: {combined_state}")
-    print(f"Redirect URI: {X_REDIRECT_URI}")
+    logger.info("AUTHORIZATION URL GENERATED:")
+    logger.info(f"  Authorization URL: {authorization_url}")
+    logger.info(f"  Generated State: {state}")
     
     # Store the state for later use
     session['oauth_state'] = combined_state
+    logger.info("  OAuth state stored in session")
+    
+    # Force session to be saved
+    session.modified = True
+    
+    logger.info("=" * 80)
+    logger.info("REDIRECTING TO X AUTHORIZATION")
+    logger.info("=" * 80)
     
     return redirect(authorization_url)
 
@@ -180,6 +205,25 @@ def callback():
     
     # Get request params
     request_state = request.args.get('state')
+    authorization_code = request.args.get('code')
+    error_param = request.args.get('error')
+    error_description = request.args.get('error_description')
+    
+    logger.info("CALLBACK PARAMETERS:")
+    logger.info(f"  Authorization Code: {authorization_code[:20] if authorization_code else 'None'}...")
+    logger.info(f"  State: {request_state}")
+    logger.info(f"  Error: {error_param}")
+    logger.info(f"  Error Description: {error_description}")
+    
+    # Check for OAuth errors first
+    if error_param:
+        logger.error(f"OAUTH ERROR RECEIVED: {error_param}")
+        logger.error(f"Error Description: {error_description}")
+        return render_template('error.html', error=f"OAuth Error: {error_param} - {error_description}")
+    
+    if not authorization_code:
+        logger.error("No authorization code received")
+        return render_template('error.html', error="No authorization code received from X")
     
     # Try to get state and code verifier from the session
     session_state = session.get('oauth_state')
@@ -689,6 +733,29 @@ def debug_session_route():
     })
     
     return jsonify(session_debug)
+
+
+@app.route('/test-session')
+def test_session():
+    """Test endpoint to verify session is working"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Set a test value in session
+    session['test_value'] = f"test_{int(time.time())}"
+    session.modified = True
+    
+    logger.info("TEST SESSION:")
+    logger.info(f"  Set test_value: {session['test_value']}")
+    logger.info(f"  Session keys: {list(session.keys())}")
+    logger.info(f"  Session modified: {session.modified}")
+    
+    return jsonify({
+        'success': True,
+        'test_value': session['test_value'],
+        'session_keys': list(session.keys()),
+        'session_modified': session.modified
+    })
 
 
 def refresh_oauth_token(token):
