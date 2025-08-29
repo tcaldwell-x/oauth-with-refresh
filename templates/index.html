@@ -36,6 +36,9 @@
                         <button id="testConfigBtn" class="btn btn-outline-warning btn-sm">
                             <i class="bi bi-gear me-1"></i> Test Config
                         </button>
+                        <button id="testStateBtn" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-code-slash me-1"></i> Test State
+                        </button>
                     </div>
                 </div>
             </div>
@@ -118,6 +121,29 @@
             alert('Error testing config: ' + error.message);
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-gear me-1"></i> Test Config';
+        }
+    });
+    
+    document.getElementById('testStateBtn').addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Testing...';
+        
+        try {
+            const response = await fetch('/test-state-extraction');
+            const data = await response.json();
+            
+            const debugDiv = document.getElementById('debugResults');
+            const debugOutput = document.getElementById('debugOutput');
+            
+            debugOutput.textContent = JSON.stringify(data, null, 2);
+            debugDiv.style.display = 'block';
+            
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-code-slash me-1"></i> Test State';
+        } catch (error) {
+            alert('Error testing state extraction: ' + error.message);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-code-slash me-1"></i> Test State';
         }
     });
 </script>

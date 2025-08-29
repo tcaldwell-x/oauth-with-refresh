@@ -146,8 +146,11 @@ def login():
     
     # Create a combined state that includes the verifier
     # This is a backup in case sessions don't work
-    combined_state = f"{secrets.token_urlsafe(16)}:{code_verifier}"
-    logger.info(f"  Combined State: {combined_state}")
+    random_state = secrets.token_urlsafe(16)
+    combined_state = f"{random_state}:{code_verifier}"
+    logger.info(f"  Random State: {random_state}")
+    logger.info(f"  Combined State: {combined_state[:50]}...")
+    logger.info(f"  Code Verifier Length: {len(code_verifier)}")
     
     # Create OAuth session
     x_session = OAuth2Session(
@@ -180,6 +183,14 @@ def login():
     
     # Force session to be saved
     session.modified = True
+    
+    # Additional session debugging
+    logger.info("SESSION DEBUG IN LOGIN:")
+    logger.info(f"  Session ID: {session.get('_id', 'N/A')}")
+    logger.info(f"  Session Keys: {list(session.keys())}")
+    logger.info(f"  Session Modified: {session.modified}")
+    logger.info(f"  Code Verifier in Session: {session.get('code_verifier', 'Not found')[:20] if session.get('code_verifier') else 'Not found'}...")
+    logger.info(f"  OAuth State in Session: {session.get('oauth_state', 'Not found')[:20] if session.get('oauth_state') else 'Not found'}...")
     
     logger.info("=" * 80)
     logger.info("REDIRECTING TO X AUTHORIZATION")
@@ -248,14 +259,32 @@ def callback():
                 code_verifier = state_parts[1]
                 logger.info(f"Extracted code_verifier from state: {code_verifier[:20]}...")
                 logger.info(f"Full code_verifier length: {len(code_verifier)}")
+                logger.info(f"State parts: random_state={state_parts[0][:10]}..., code_verifier={code_verifier[:10]}...")
+                
+                # Validate code verifier format
+                if len(code_verifier) < 43:
+                    logger.error(f"Extracted code_verifier too short: {len(code_verifier)} characters")
+                else:
+                    logger.info("Code verifier extraction successful")
             else:
                 logger.error(f"Invalid state format. Expected 'random:code_verifier', got: {request_state}")
         else:
             logger.error(f"No code_verifier found in state: {request_state}")
+            logger.error(f"State format analysis: contains ':' = {':' in request_state}")
+            logger.error(f"State length: {len(request_state) if request_state else 0}")
     elif not session_state and not request_state:
         logger.error("No state found in session or request")
     elif session_state and not code_verifier:
         logger.error("Session state found but no code_verifier in session")
+    
+    # Additional debugging for session issues
+    logger.info("SESSION DEBUG IN CALLBACK:")
+    logger.info(f"  Session ID: {session.get('_id', 'N/A')}")
+    logger.info(f"  Session Keys: {list(session.keys())}")
+    logger.info(f"  Session Modified: {session.modified}")
+    logger.info(f"  Request Cookies: {dict(request.cookies)}")
+    logger.info(f"  Session Cookie Name: {app.config.get('SESSION_COOKIE_NAME', 'session')}")
+    logger.info(f"  Session Cookie Present: {'session' in request.cookies}")
     
     # If state or code_verifier is still None, return error
     if not session_state:
@@ -856,6 +885,38 @@ def test_config():
         'expected_callback': f"https://{os.getenv('VERCEL_URL')}/callback" if os.getenv('VERCEL_URL') else "Not set",
         'client_id': X_CLIENT_ID[:20] + "..." if X_CLIENT_ID else "Not set",
         'client_secret': "Set" if X_CLIENT_SECRET else "Not set"
+    })
+
+
+@app.route('/test-state-extraction')
+def test_state_extraction():
+    """Test endpoint to verify state extraction logic"""
+    # Generate a test state similar to what we use in login
+    test_code_verifier = generate_code_verifier()
+    test_random_state = secrets.token_urlsafe(16)
+    test_combined_state = f"{test_random_state}:{test_code_verifier}"
+    
+    # Test extraction
+    if ':' in test_combined_state:
+        state_parts = test_combined_state.split(':', 1)
+        if len(state_parts) == 2:
+            extracted_verifier = state_parts[1]
+            success = len(extracted_verifier) >= 43
+        else:
+            extracted_verifier = None
+            success = False
+    else:
+        extracted_verifier = None
+        success = False
+    
+    return jsonify({
+        'success': success,
+        'test_random_state': test_random_state,
+        'test_code_verifier_length': len(test_code_verifier),
+        'test_combined_state_length': len(test_combined_state),
+        'extracted_verifier_length': len(extracted_verifier) if extracted_verifier else 0,
+        'state_contains_colon': ':' in test_combined_state,
+        'state_parts_count': len(test_combined_state.split(':', 1)) if ':' in test_combined_state else 0
     })
 
 
