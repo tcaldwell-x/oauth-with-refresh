@@ -19,9 +19,9 @@ app = Flask(__name__)
 # Configure session for serverless environment
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
 
-# For serverless environments, we'll use a simple in-memory session with larger cookie size
-# This is not ideal for production but works for debugging
-app.config['SESSION_TYPE'] = 'filesystem'  # This will fall back to in-memory if no filesystem
+# For serverless environments, use simple cookie-based sessions
+# This avoids filesystem issues in serverless environments
+app.config['SESSION_TYPE'] = 'null'  # Use null session type for cookie-based storage
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('VERCEL_ENV') == 'production'
@@ -251,14 +251,28 @@ def callback():
             if len(state_parts) == 2:
                 code_verifier = state_parts[1]
                 logger.info(f"Extracted code_verifier from state: {code_verifier[:20]}...")
+                logger.info(f"Full code_verifier length: {len(code_verifier)}")
+            else:
+                logger.error(f"Invalid state format. Expected 'random:code_verifier', got: {request_state}")
+        else:
+            logger.error(f"No code_verifier found in state: {request_state}")
+    elif not session_state and not request_state:
+        logger.error("No state found in session or request")
+    elif session_state and not code_verifier:
+        logger.error("Session state found but no code_verifier in session")
     
     # If state or code_verifier is still None, return error
     if not session_state:
         logger.error("State is missing from session")
-        return render_template('error.html', error="State is missing from session. Session may have expired.")
+        return render_template('error.html', error="State is missing from session. Session may have expired. Please try logging in again.")
     if not code_verifier:
         logger.error("Code verifier is missing from session")
-        return render_template('error.html', error="Code verifier is missing. Session may have expired.")
+        return render_template('error.html', error="Code verifier is missing. Session may have expired. Please try logging in again.")
+    
+    # Validate code_verifier format
+    if len(code_verifier) < 43:  # PKCE code verifiers should be at least 43 characters
+        logger.error(f"Code verifier too short: {len(code_verifier)} characters")
+        return render_template('error.html', error="Invalid code verifier format. Please try logging in again.")
     
     # Create the OAuth session with state
     x_session = OAuth2Session(
@@ -283,6 +297,14 @@ def callback():
         logger.info(f"  Authorization Response URL: {auth_response_url}")
         logger.info(f"  Code Verifier: {code_verifier[:20]}...")
         
+        # Get and decode the authorization code for the main request too
+        raw_code = request.args.get('code')
+        authorization_code = urllib.parse.unquote(raw_code) if raw_code else None
+        
+        logger.info("MAIN TOKEN REQUEST - AUTHORIZATION CODE:")
+        logger.info(f"  Raw Code: {raw_code}")
+        logger.info(f"  Decoded Code: {authorization_code}")
+        
         token = x_session.fetch_token(
             TOKEN_URL,
             client_secret=X_CLIENT_SECRET,
@@ -306,10 +328,20 @@ def callback():
         logger.info("Making manual OAuth2 token request to capture headers...")
         import requests
         
+        # Get and decode the authorization code
+        raw_code = request.args.get('code')
+        # The code might be URL-encoded, so let's decode it
+        import urllib.parse
+        authorization_code = urllib.parse.unquote(raw_code) if raw_code else None
+        
+        logger.info("AUTHORIZATION CODE PROCESSING:")
+        logger.info(f"  Raw Code: {raw_code}")
+        logger.info(f"  Decoded Code: {authorization_code}")
+        
         # Prepare the token request data
         token_data = {
             'grant_type': 'authorization_code',
-            'code': request.args.get('code'),
+            'code': authorization_code,
             'redirect_uri': X_REDIRECT_URI,
             'client_id': X_CLIENT_ID,
             'code_verifier': code_verifier
@@ -754,7 +786,29 @@ def test_session():
         'success': True,
         'test_value': session['test_value'],
         'session_keys': list(session.keys()),
-        'session_modified': session.modified
+        'session_modified': session.modified,
+        'session_id': session.get('_id', 'N/A'),
+        'session_type': app.config.get('SESSION_TYPE', 'unknown')
+    })
+
+
+@app.route('/test-session-read')
+def test_session_read():
+    """Test endpoint to read session data"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    test_value = session.get('test_value', 'Not found')
+    
+    logger.info("TEST SESSION READ:")
+    logger.info(f"  Retrieved test_value: {test_value}")
+    logger.info(f"  Session keys: {list(session.keys())}")
+    
+    return jsonify({
+        'success': True,
+        'test_value': test_value,
+        'session_keys': list(session.keys()),
+        'session_id': session.get('_id', 'N/A')
     })
 
 
