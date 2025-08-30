@@ -1089,6 +1089,10 @@ def refresh_oauth_token(token):
             # Update the token timestamp
             new_token['timestamp'] = int(time.time())
             
+            # Add response details to the token
+            new_token['status_code'] = response.status_code
+            new_token['x_transaction_id'] = response.headers.get('x-transaction-id', 'N/A')
+            
             return new_token
         else:
             logger.error(f"REFRESH TOKEN REQUEST FAILED - Status: {response.status_code}")
@@ -1103,7 +1107,11 @@ def refresh_oauth_token(token):
             except Exception:
                 logger.error(f"  Raw Response: {response.text}")
                 
-            return {'error': error_msg}
+            return {
+                'error': error_msg,
+                'status_code': response.status_code,
+                'x_transaction_id': response.headers.get('x-transaction-id', 'N/A')
+            }
     except Exception as e:
         logger.error(f"REFRESH TOKEN REQUEST EXCEPTION: {str(e)}")
         logger.error(f"Exception Type: {type(e).__name__}")
@@ -1158,6 +1166,68 @@ def refresh_token():
         'success': True, 
         'message': 'Token refreshed successfully',
         'token': new_token
+    })
+
+
+@app.route('/continuous-refresh')
+def continuous_refresh():
+    """Continuously refresh the OAuth token up to 2000 times"""
+    # Check if the user is logged in
+    token = session.get('oauth_token')
+    
+    if not token:
+        return jsonify({'success': False, 'message': 'No token found in session'})
+    
+    # Get the number of iterations (default to 10 for safety, max 2000)
+    iterations = min(int(request.args.get('iterations', 10)), 2000)
+    
+    results = []
+    current_token = token.copy()
+    
+    for i in range(iterations):
+        try:
+            # Refresh the token
+            new_token = refresh_oauth_token(current_token)
+            
+            # Get the response details from the refresh function
+            result = {
+                'iteration': i + 1,
+                'timestamp': int(time.time()),
+                'success': 'error' not in new_token,
+                'status_code': new_token.get('status_code', 'N/A'),
+                'x_transaction_id': new_token.get('x_transaction_id', 'N/A'),
+                'access_token': new_token.get('access_token', 'N/A')[:20] + '...' if new_token.get('access_token') else 'N/A',
+                'refresh_token': new_token.get('refresh_token', 'N/A')[:20] + '...' if new_token.get('refresh_token') else 'N/A',
+                'error': new_token.get('error', None)
+            }
+            
+            results.append(result)
+            
+            # Update current token for next iteration
+            if 'error' not in new_token:
+                current_token = new_token
+                session['oauth_token'] = new_token
+            else:
+                # Stop on error
+                break
+                
+        except Exception as e:
+            results.append({
+                'iteration': i + 1,
+                'timestamp': int(time.time()),
+                'success': False,
+                'status_code': 'Exception',
+                'x_transaction_id': 'N/A',
+                'access_token': 'N/A',
+                'refresh_token': 'N/A',
+                'error': str(e)
+            })
+            break
+    
+    return jsonify({
+        'success': True,
+        'total_iterations': len(results),
+        'results': results
     })
 
 

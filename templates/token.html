@@ -84,6 +84,9 @@
                         <button id="refreshButton" class="btn btn-primary" {% if not token.refresh_token %}disabled{% endif %}>
                             <i class="bi bi-arrow-repeat me-2"></i> Refresh Token
                         </button>
+                        <button id="continuousRefreshButton" class="btn btn-danger" {% if not token.refresh_token %}disabled{% endif %}>
+                            <i class="bi bi-arrow-repeat me-2"></i> Continuous Refresh
+                        </button>
                         <button id="testBookmarksButton" class="btn btn-warning">
                             <i class="bi bi-bookmark-star me-2"></i> Test Bookmarks API
                         </button>
@@ -95,6 +98,20 @@
                     <div id="refreshStatus" class="alert" style="display: none;"></div>
                     <div id="bookmarksStatus" class="alert" style="display: none;"></div>
                     <div id="debugSessionStatus" class="alert" style="display: none;"></div>
+                    
+                    <!-- Continuous Refresh Results -->
+                    <div id="continuousRefreshContainer" style="display: none;">
+                        <h5 class="text-x mb-3">Continuous Refresh Results:</h5>
+                        <div class="mb-3">
+                            <label for="iterationsInput" class="form-label">Number of iterations (max 2000):</label>
+                            <input type="number" id="iterationsInput" class="form-control" value="10" min="1" max="2000" style="width: 200px;">
+                        </div>
+                        <div class="bg-dark border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                            <div id="continuousRefreshResults" class="text-white">
+                                <!-- Results will be appended here -->
+                            </div>
+                        </div>
+                    </div>
                     
                     <h5 class="text-x mb-3">Complete Token Information:</h5>
                     <div class="bg-black p-3 rounded">
@@ -223,6 +240,77 @@
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-bug me-2"></i> Debug Session';
         }
+    });
+    
+    document.getElementById('continuousRefreshButton').addEventListener('click', async function() {
+        const iterations = parseInt(document.getElementById('iterationsInput').value) || 10;
+        const maxIterations = Math.min(iterations, 2000);
+        
+        this.disabled = true;
+        this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Running...';
+        
+        // Show the container
+        document.getElementById('continuousRefreshContainer').style.display = 'block';
+        
+        // Clear previous results
+        const resultsContainer = document.getElementById('continuousRefreshResults');
+        resultsContainer.innerHTML = '<div class="text-info">Starting continuous refresh...</div>';
+        
+        try {
+            const response = await fetch(`/continuous-refresh?iterations=${maxIterations}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                resultsContainer.innerHTML = '';
+                
+                data.results.forEach(result => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'mb-2 p-2 border-bottom border-secondary';
+                    
+                    const successClass = result.success ? 'text-success' : 'text-danger';
+                    const successIcon = result.success ? '✓' : '✗';
+                    
+                    resultDiv.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong class="${successClass}">${successIcon} Iteration ${result.iteration}</strong>
+                                <small class="text-muted ms-2">${new Date(result.timestamp * 1000).toLocaleTimeString()}</small>
+                            </div>
+                            <span class="badge bg-${result.success ? 'success' : 'danger'}">${result.status_code}</span>
+                        </div>
+                        <div class="mt-1">
+                            <small class="text-muted">
+                                <strong>X-Transaction-ID:</strong> ${result.x_transaction_id}<br>
+                                <strong>Access Token:</strong> ${result.access_token}<br>
+                                <strong>Refresh Token:</strong> ${result.refresh_token}
+                            </small>
+                        </div>
+                        ${result.error ? `<div class="text-danger mt-1"><small>Error: ${result.error}</small></div>` : ''}
+                    `;
+                    
+                    resultsContainer.appendChild(resultDiv);
+                });
+                
+                // Add summary
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = 'mt-3 p-2 bg-secondary text-white rounded';
+                summaryDiv.innerHTML = `
+                    <strong>Summary:</strong> Completed ${data.total_iterations} iterations. 
+                    ${data.results.filter(r => r.success).length} successful, 
+                    ${data.results.filter(r => !r.success).length} failed.
+                `;
+                resultsContainer.appendChild(summaryDiv);
+                
+            } else {
+                resultsContainer.innerHTML = `<div class="text-danger">Error: ${data.message}</div>`;
+            }
+            
+        } catch (error) {
+            resultsContainer.innerHTML = `<div class="text-danger">Error: ${error.message}</div>`;
+        }
+        
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Continuous Refresh';
     });
 </script>
 {% endblock %} 
