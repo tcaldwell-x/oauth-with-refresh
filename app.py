@@ -730,7 +730,8 @@ def api_request():
 
         # Only proxy raw binary for successful non-JSON responses (images etc.)
         # Error responses always come back as JSON so the body is visible in the UI.
-        if is_success and not content_type.startswith('application/json'):
+        # If the body is empty (Content-Length: 0) fall through to the debug JSON view.
+        if is_success and not content_type.startswith('application/json') and len(upstream.content) > 0:
             filename = url.rstrip('/').split('/')[-1] or 'download'
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
             image_exts = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
@@ -758,15 +759,28 @@ def api_request():
         auth_sent = request_headers.get('Authorization', '')
         auth_debug = (auth_sent[:15] + '…' + auth_sent[-4:]) if len(auth_sent) > 20 else '(empty)'
 
+        # Build redirect chain so we can see every hop
+        redirect_chain = [
+            {
+                'url': r.url,
+                'status_code': r.status_code,
+                'headers': dict(r.headers),
+            }
+            for r in upstream.history
+        ]
+
         return jsonify({
             'status_code': upstream.status_code,
             'body': response_body,
             'debug': {
-                'request_url': upstream.url,
+                'final_url': upstream.url,
+                'content_length': upstream.headers.get('Content-Length'),
+                'content_type': upstream.headers.get('Content-Type'),
                 'authorization_sent': auth_debug,
                 'request_headers': {k: (v if k.lower() != 'authorization' else auth_debug)
                                     for k, v in request_headers.items()},
                 'response_headers': dict(upstream.headers),
+                'redirect_chain': redirect_chain,
             },
         })
 
