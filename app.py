@@ -726,14 +726,12 @@ def api_request():
 
         upstream = req_lib.request(method, url, **kwargs)
         content_type = upstream.headers.get('Content-Type', '')
+        is_success = 200 <= upstream.status_code < 300
 
-        # For non-JSON responses (images, binary, etc.) proxy the raw bytes
-        # back to the browser with the original Content-Type so the frontend
-        # can display or download them directly.
-        if not content_type.startswith('application/json'):
-            # Pull filename from the URL path for the Content-Disposition hint
+        # Only proxy raw binary for successful non-JSON responses (images etc.)
+        # Error responses always come back as JSON so the body is visible in the UI.
+        if is_success and not content_type.startswith('application/json'):
             filename = url.rstrip('/').split('/')[-1] or 'download'
-            # Sniff image type from the URL extension if the API didn't set a clear content type
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
             image_exts = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
                           'gif': 'image/gif', 'webp': 'image/webp'}
@@ -750,16 +748,26 @@ def api_request():
                 },
             )
 
-        # JSON response — return metadata envelope as before
+        # JSON / error response — always return the envelope so the UI can display it
         try:
             response_body = upstream.json()
         except Exception:
             response_body = upstream.text
 
+        # Mask token but confirm it's present
+        auth_sent = request_headers.get('Authorization', '')
+        auth_debug = (auth_sent[:15] + '…' + auth_sent[-4:]) if len(auth_sent) > 20 else '(empty)'
+
         return jsonify({
             'status_code': upstream.status_code,
             'body': response_body,
-            'request_url': upstream.url,  # shows final URL after any redirects
+            'debug': {
+                'request_url': upstream.url,
+                'authorization_sent': auth_debug,
+                'request_headers': {k: (v if k.lower() != 'authorization' else auth_debug)
+                                    for k, v in request_headers.items()},
+                'response_headers': dict(upstream.headers),
+            },
         })
 
     except Exception as e:

@@ -187,8 +187,16 @@
                              class="img-fluid rounded" style="max-height:500px;">
                     </div>
                     <!-- JSON / text response -->
-                    <div id="apiJsonWrapper" class="bg-black rounded p-3" style="max-height:400px;overflow-y:auto;display:none;">
-                        <pre id="apiResponseBody" class="mb-0 text-white small"></pre>
+                    <div id="apiJsonWrapper" style="display:none;">
+                        <div class="bg-black rounded p-3 mb-2" style="max-height:300px;overflow-y:auto;">
+                            <pre id="apiResponseBody" class="mb-0 text-white small"></pre>
+                        </div>
+                        <details id="apiDebugDetails" style="display:none;">
+                            <summary class="text-muted small" style="cursor:pointer;">Debug info</summary>
+                            <div class="bg-black rounded p-3 mt-1" style="max-height:250px;overflow-y:auto;">
+                                <pre id="apiDebugBody" class="mb-0 text-muted small"></pre>
+                            </div>
+                        </details>
                     </div>
                 </div>
             </div>
@@ -366,15 +374,24 @@
                 // --- JSON / text response ---
                 jsonWrapper.style.display = 'block';
                 const data = await res.json();
-                if (data.request_url) requestUrlEl.textContent = '→ ' + data.request_url;
+
                 if (data.error) {
-                    statusBadge.className   = 'badge bg-danger';
-                    statusBadge.textContent = 'Error';
+                    statusBadge.className    = 'badge bg-danger';
+                    statusBadge.textContent  = 'Error';
                     responseBody.textContent = data.error;
                 } else {
                     responseBody.textContent = typeof data.body === 'string'
                         ? data.body
                         : JSON.stringify(data.body, null, 2);
+
+                    // Show debug info (request/response headers, final URL)
+                    if (data.debug) {
+                        const debugEl = document.getElementById('apiDebugDetails');
+                        const debugBody = document.getElementById('apiDebugBody');
+                        debugEl.style.display = 'block';
+                        if (data.debug.request_url) requestUrlEl.textContent = '→ ' + data.debug.request_url;
+                        debugBody.textContent = JSON.stringify(data.debug, null, 2);
+                    }
                 }
             }
 
