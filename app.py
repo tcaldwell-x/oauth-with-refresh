@@ -49,7 +49,7 @@ X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
 # Production domain configuration
-PRODUCTION_DOMAIN = os.getenv('PRODUCTION_DOMAIN', 'oauth-with-refresh-rust.vercel.app')
+PRODUCTION_DOMAIN = os.getenv('PRODUCTION_DOMAIN', 'oauth2-rose.vercel.app')
 
 # Get the appropriate redirect URI based on environment
 if os.getenv('X_REDIRECT_URI'):
