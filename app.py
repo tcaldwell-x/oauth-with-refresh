@@ -63,7 +63,7 @@ elif os.getenv('VERCEL_URL'):
     X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
 else:
     # Local development
-    X_REDIRECT_URI = "http://127.0.0.1:5000/callback"
+    X_REDIRECT_URI = "https://oauth2-rose.vercel.app/callback"
 
 # X OAuth2 endpoints
 AUTHORIZATION_BASE_URL = 'https://x.com/i/oauth2/authorize'
