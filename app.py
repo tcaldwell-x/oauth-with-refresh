@@ -65,6 +65,12 @@ else:
     # Local development
     X_REDIRECT_URI = "https://oauth2-rose.vercel.app/callback"
 
+# Shared headers for all X API requests
+X_REQUEST_HEADERS = {
+    'X-B3-Flags': '1',
+    'X-TFE-Experiment-environment': 'staging1',
+}
+
 # X OAuth2 endpoints
 AUTHORIZATION_BASE_URL = 'https://x.com/i/oauth2/authorize'
 TOKEN_URL = 'https://api.x.com/2/oauth2/token'
@@ -187,7 +193,7 @@ def login():
     )
     
     # Add X-B3-Flags header to the session
-    x_session.headers.update({'X-B3-Flags': '1'})
+    x_session.headers.update(X_REQUEST_HEADERS)
     
     logger.info("OAUTH2 CONFIGURATION:")
     logger.info(f"  Client ID: {X_CLIENT_ID}")
@@ -341,7 +347,7 @@ def callback():
     )
     
     # Add X-B3-Flags header to the session
-    x_session.headers.update({'X-B3-Flags': '1'})
+    x_session.headers.update(X_REQUEST_HEADERS)
     
     try:
         # Get the full URL for authorization response
@@ -411,7 +417,7 @@ def callback():
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Authorization': f'Basic {base64.b64encode(f"{X_CLIENT_ID}:{X_CLIENT_SECRET}".encode()).decode()}',
-            'X-B3-Flags': '1'
+            **X_REQUEST_HEADERS,
         }
         
         try:
@@ -481,7 +487,7 @@ def fetch_user_info(token):
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
     
     # Add X-B3-Flags header to the session
-    x_session.headers.update({'X-B3-Flags': '1'})
+    x_session.headers.update(X_REQUEST_HEADERS)
     
     # Include user fields to get more information
     params = {
@@ -560,7 +566,7 @@ def refresh_oauth_token(token):
         # 'client_secret': X_CLIENT_SECRET
     }
     headers = {
-        'X-B3-Flags': '1'
+        **X_REQUEST_HEADERS,
     }
 
     logger.info("REFRESH TOKEN REQUEST DETAILS:")
@@ -704,6 +710,7 @@ def api_request():
         return jsonify({'error': 'URL is required'}), 400
 
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
+    x_session.headers.update(X_REQUEST_HEADERS)
 
     try:
         kwargs = {}
