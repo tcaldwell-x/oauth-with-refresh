@@ -244,10 +244,10 @@
     {% endif %}
 
     // API Explorer — Headers table
-    const DEFAULT_HEADERS = {
-        'X-B3-Flags': '1',
-        'X-TFE-Experiment-environment': 'staging1',
-    };
+    // No default custom headers — add X-TFE-Experiment-environment: staging1
+    // manually only for API calls that need it (media endpoints don't serve
+    // bytes from staging and will return 200 with an empty body).
+    const DEFAULT_HEADERS = {};
 
     function addHeaderRow(key = '', value = '') {
         const tbody = document.getElementById('headersBody');
