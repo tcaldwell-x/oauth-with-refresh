@@ -93,7 +93,8 @@
                         <tr>
                             <td class="text-muted ps-3">Scopes</td>
                             <td>
-                                {% for scope in (token.scope | default('')).split() %}
+                                {% set scope_list = token.scope.split() if token.scope is string else token.scope %}
+                                {% for scope in (scope_list or []) %}
                                 <span class="badge bg-secondary me-1">{{ scope }}</span>
                                 {% endfor %}
                             </td>

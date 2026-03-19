@@ -648,14 +648,18 @@ def token_info():
     
     if not token or not user_info:
         return redirect(url_for('index'))
-    
+
+    user_data = user_info.get('data', {})
+    if not user_data:
+        return render_template('error.html', error="Could not retrieve user info. Please try logging in again.")
+
     # Add a timestamp if not present
     if 'timestamp' not in token:
         token['timestamp'] = int(time.time())
     
     return render_template('token.html', 
                           token=token, 
-                          user=user_info['data'],
+                          user=user_data,
                           current_time=int(time.time()))
 
 
