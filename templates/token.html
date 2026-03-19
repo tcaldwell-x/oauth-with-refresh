@@ -138,6 +138,28 @@
                     </button>
                 </div>
 
+                <!-- Headers editor -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label text-muted small mb-0">Headers</label>
+                        <button id="addHeaderBtn" type="button" class="btn btn-outline-secondary btn-sm py-0">
+                            <i class="bi bi-plus"></i> Add
+                        </button>
+                    </div>
+                    <table class="table table-dark table-sm mb-0 border border-secondary rounded" id="headersTable">
+                        <thead>
+                            <tr>
+                                <th class="text-muted fw-normal small ps-2" style="width:40%">Key</th>
+                                <th class="text-muted fw-normal small">Value</th>
+                                <th style="width:36px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="headersBody">
+                            <!-- rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Body editor (shown for POST/PUT/PATCH) -->
                 <div id="bodyEditorWrapper" style="display:none;" class="mb-3">
                     <label class="form-label text-muted small">Request Body (JSON)</label>
@@ -210,7 +232,50 @@
     });
     {% endif %}
 
-    // API Explorer
+    // API Explorer — Headers table
+    const DEFAULT_HEADERS = {
+        'X-B3-Flags': '1',
+        'X-TFE-Experiment-environment': 'staging1',
+    };
+
+    function addHeaderRow(key = '', value = '') {
+        const tbody = document.getElementById('headersBody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="ps-2 py-1">
+                <input type="text" class="form-control form-control-sm bg-black text-white border-secondary header-key"
+                       value="${key}" placeholder="Key">
+            </td>
+            <td class="py-1">
+                <input type="text" class="form-control form-control-sm bg-black text-white border-secondary header-val"
+                       value="${value}" placeholder="Value">
+            </td>
+            <td class="py-1 text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 remove-header-btn"
+                        title="Remove">
+                    <i class="bi bi-x"></i>
+                </button>
+            </td>`;
+        tbody.appendChild(tr);
+        tr.querySelector('.remove-header-btn').addEventListener('click', () => tr.remove());
+    }
+
+    function getHeaders() {
+        const headers = {};
+        document.querySelectorAll('#headersBody tr').forEach(tr => {
+            const key = tr.querySelector('.header-key').value.trim();
+            const val = tr.querySelector('.header-val').value.trim();
+            if (key) headers[key] = val;
+        });
+        return headers;
+    }
+
+    // Seed with defaults
+    Object.entries(DEFAULT_HEADERS).forEach(([k, v]) => addHeaderRow(k, v));
+
+    document.getElementById('addHeaderBtn').addEventListener('click', () => addHeaderRow());
+
+    // API Explorer — method/body toggle
     const methodSelect = document.getElementById('apiMethod');
     const bodyWrapper = document.getElementById('bodyEditorWrapper');
 
@@ -260,7 +325,7 @@
             const res = await fetch('/api-request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, method, body })
+                body: JSON.stringify({ url, method, body, headers: getHeaders() })
             });
 
             responseWrapper.style.display = 'block';

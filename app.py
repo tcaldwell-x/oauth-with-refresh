@@ -705,12 +705,15 @@ def api_request():
     url = data.get('url', '').strip()
     method = data.get('method', 'GET').upper()
     body = data.get('body')  # optional JSON body for POST/PUT/PATCH
+    custom_headers = data.get('headers') or {}  # per-request headers from the UI
 
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     x_session = OAuth2Session(X_CLIENT_ID, token=token)
-    x_session.headers.update(X_REQUEST_HEADERS)
+    # Apply only the headers the user has configured in the explorer
+    # (they start with the defaults but can remove/change them)
+    x_session.headers.update(custom_headers)
 
     try:
         kwargs = {}
