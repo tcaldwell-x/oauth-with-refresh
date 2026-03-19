@@ -264,26 +264,33 @@
             });
 
             responseWrapper.style.display = 'block';
-            const contentType = res.headers.get('content-type') || '';
+            const isBinary    = res.headers.get('x-response-is-binary') === 'true';
+            const mimeType    = res.headers.get('x-upstream-content-type') || res.headers.get('content-type') || '';
             const statusCode  = res.headers.get('x-api-status-code') || res.status;
             const isOk        = statusCode >= 200 && statusCode < 300;
 
             statusBadge.className   = `badge ${isOk ? 'bg-success' : statusCode >= 400 ? 'bg-danger' : 'bg-warning'}`;
             statusBadge.textContent = statusCode;
 
-            if (contentType.startsWith('image/')) {
-                // --- Image response: show inline + download button ---
+            if (isBinary) {
+                // --- Binary response (image or other) ---
                 const blob   = await res.blob();
                 const objUrl = URL.createObjectURL(blob);
+                const filename = url.split('/').pop().split('?')[0] || 'download';
 
-                responseImage.src = objUrl;
-                imageWrapper.style.display = 'block';
-
-                // Extract filename from URL input
-                const filename = url.split('/').pop().split('?')[0] || 'image';
-                downloadBtn.href     = objUrl;
-                downloadBtn.download = filename;
+                downloadBtn.href          = objUrl;
+                downloadBtn.download      = filename;
                 downloadBtn.style.display = 'inline-block';
+
+                if (mimeType.startsWith('image/')) {
+                    // Display image inline
+                    responseImage.src          = objUrl;
+                    imageWrapper.style.display = 'block';
+                } else {
+                    // Non-image binary — just show download, no preview
+                    jsonWrapper.style.display    = 'block';
+                    responseBody.textContent = `Binary response (${mimeType || 'unknown type'}) — use the Download button above.`;
+                }
 
             } else {
                 // --- JSON / text response ---

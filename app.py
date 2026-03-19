@@ -726,12 +726,19 @@ def api_request():
         if not content_type.startswith('application/json'):
             # Pull filename from the URL path for the Content-Disposition hint
             filename = url.rstrip('/').split('/')[-1] or 'download'
+            # Sniff image type from the URL extension if the API didn't set a clear content type
+            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            image_exts = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+                          'gif': 'image/gif', 'webp': 'image/webp'}
+            resolved_type = image_exts.get(ext, content_type) or 'application/octet-stream'
             return Response(
                 upstream.content,
                 status=upstream.status_code,
-                content_type=content_type,
+                content_type=resolved_type,
                 headers={
                     'X-Api-Status-Code': str(upstream.status_code),
+                    'X-Response-Is-Binary': 'true',
+                    'X-Upstream-Content-Type': resolved_type,
                     'Content-Disposition': f'inline; filename="{filename}"',
                 },
             )
