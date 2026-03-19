@@ -688,6 +688,44 @@ def refresh_token():
     })
 
 
+@app.route('/api-request', methods=['POST'])
+def api_request():
+    """Make an authenticated request to any X API endpoint using the session token"""
+    token = session.get('oauth_token')
+    if not token:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    url = data.get('url', '').strip()
+    method = data.get('method', 'GET').upper()
+    body = data.get('body')  # optional JSON body for POST/PUT/PATCH
+
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+
+    x_session = OAuth2Session(X_CLIENT_ID, token=token)
+
+    try:
+        kwargs = {}
+        if body and method in ('POST', 'PUT', 'PATCH'):
+            kwargs['json'] = body
+
+        response = x_session.request(method, url, **kwargs)
+
+        try:
+            response_body = response.json()
+        except Exception:
+            response_body = response.text
+
+        return jsonify({
+            'status_code': response.status_code,
+            'body': response_body,
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     try:
         app.run(debug=True)

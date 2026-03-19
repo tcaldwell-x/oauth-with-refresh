@@ -116,6 +116,48 @@
             </div>
         </div>
 
+        <!-- API Explorer -->
+        <div class="card mt-4">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-send me-2"></i>API Explorer
+            </div>
+            <div class="card-body">
+                <!-- Method + URL row -->
+                <div class="input-group mb-3">
+                    <select id="apiMethod" class="form-select bg-black text-white border-secondary" style="max-width:110px;">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                    <input type="text" id="apiUrl" class="form-control font-monospace bg-black text-white border-secondary"
+                           placeholder="https://api.x.com/2/...">
+                    <button id="apiSendBtn" class="btn btn-primary" type="button">
+                        <i class="bi bi-send-fill me-1"></i> Send
+                    </button>
+                </div>
+
+                <!-- Body editor (shown for POST/PUT/PATCH) -->
+                <div id="bodyEditorWrapper" style="display:none;" class="mb-3">
+                    <label class="form-label text-muted small">Request Body (JSON)</label>
+                    <textarea id="apiBody" class="form-control font-monospace bg-black text-white border-secondary"
+                              rows="4" placeholder='{ "key": "value" }'></textarea>
+                </div>
+
+                <!-- Response -->
+                <div id="apiResponseWrapper" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">Response</span>
+                        <span id="apiStatusBadge" class="badge"></span>
+                    </div>
+                    <div class="bg-black rounded p-3" style="max-height:400px;overflow-y:auto;">
+                        <pre id="apiResponseBody" class="mb-0 text-white small"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 {% endblock %}
@@ -156,5 +198,74 @@
         copyToClipboard('refreshToken', 'copyRefreshFeedback', 'copyRefreshBtn');
     });
     {% endif %}
+
+    // API Explorer
+    const methodSelect = document.getElementById('apiMethod');
+    const bodyWrapper = document.getElementById('bodyEditorWrapper');
+
+    methodSelect.addEventListener('change', function () {
+        bodyWrapper.style.display = ['POST', 'PUT', 'PATCH'].includes(this.value) ? 'block' : 'none';
+    });
+
+    document.getElementById('apiSendBtn').addEventListener('click', async function () {
+        const url = document.getElementById('apiUrl').value.trim();
+        const method = methodSelect.value;
+        const bodyText = document.getElementById('apiBody').value.trim();
+
+        if (!url) {
+            alert('Please enter a URL.');
+            return;
+        }
+
+        let body = null;
+        if (bodyText && ['POST', 'PUT', 'PATCH'].includes(method)) {
+            try {
+                body = JSON.parse(bodyText);
+            } catch (e) {
+                alert('Request body is not valid JSON:\n' + e.message);
+                return;
+            }
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+
+        const responseWrapper = document.getElementById('apiResponseWrapper');
+        const statusBadge = document.getElementById('apiStatusBadge');
+        const responseBody = document.getElementById('apiResponseBody');
+
+        try {
+            const res = await fetch('/api-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, method, body })
+            });
+            const data = await res.json();
+
+            responseWrapper.style.display = 'block';
+
+            if (data.error) {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = 'Error';
+                responseBody.textContent = data.error;
+            } else {
+                const code = data.status_code;
+                statusBadge.className = `badge ${code >= 200 && code < 300 ? 'bg-success' : code >= 400 ? 'bg-danger' : 'bg-warning'}`;
+                statusBadge.textContent = code;
+                responseBody.textContent = typeof data.body === 'string'
+                    ? data.body
+                    : JSON.stringify(data.body, null, 2);
+            }
+        } catch (e) {
+            responseWrapper.style.display = 'block';
+            statusBadge.className = 'badge bg-danger';
+            statusBadge.textContent = 'Error';
+            responseBody.textContent = e.message;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send-fill me-1"></i> Send';
+        }
+    });
 </script>
 {% endblock %} 
