@@ -1,6 +1,6 @@
 # OAuth2.0 Application - Minimal access token retrieval flow
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from requests_oauthlib import OAuth2Session
 from dotenv import load_dotenv
 import secrets
@@ -717,15 +717,33 @@ def api_request():
         if body and method in ('POST', 'PUT', 'PATCH'):
             kwargs['json'] = body
 
-        response = x_session.request(method, url, **kwargs)
+        upstream = x_session.request(method, url, **kwargs)
+        content_type = upstream.headers.get('Content-Type', '')
 
+        # For non-JSON responses (images, binary, etc.) proxy the raw bytes
+        # back to the browser with the original Content-Type so the frontend
+        # can display or download them directly.
+        if not content_type.startswith('application/json'):
+            # Pull filename from the URL path for the Content-Disposition hint
+            filename = url.rstrip('/').split('/')[-1] or 'download'
+            return Response(
+                upstream.content,
+                status=upstream.status_code,
+                content_type=content_type,
+                headers={
+                    'X-Api-Status-Code': str(upstream.status_code),
+                    'Content-Disposition': f'inline; filename="{filename}"',
+                },
+            )
+
+        # JSON response — return metadata envelope as before
         try:
-            response_body = response.json()
+            response_body = upstream.json()
         except Exception:
-            response_body = response.text
+            response_body = upstream.text
 
         return jsonify({
-            'status_code': response.status_code,
+            'status_code': upstream.status_code,
             'body': response_body,
         })
 
