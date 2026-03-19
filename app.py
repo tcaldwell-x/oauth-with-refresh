@@ -710,17 +710,21 @@ def api_request():
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
-    x_session = OAuth2Session(X_CLIENT_ID, token=token)
-    # Apply only the headers the user has configured in the explorer
-    # (they start with the defaults but can remove/change them)
-    x_session.headers.update(custom_headers)
+    import requests as req_lib
+
+    # Build headers: start with Authorization Bearer (same as Postman),
+    # then layer in whatever the user has set in the explorer UI.
+    request_headers = {
+        'Authorization': f'Bearer {token["access_token"]}',
+        **custom_headers,
+    }
 
     try:
-        kwargs = {}
+        kwargs = {'headers': request_headers}
         if body and method in ('POST', 'PUT', 'PATCH'):
             kwargs['json'] = body
 
-        upstream = x_session.request(method, url, **kwargs)
+        upstream = req_lib.request(method, url, **kwargs)
         content_type = upstream.headers.get('Content-Type', '')
 
         # For non-JSON responses (images, binary, etc.) proxy the raw bytes
@@ -755,6 +759,7 @@ def api_request():
         return jsonify({
             'status_code': upstream.status_code,
             'body': response_body,
+            'request_url': upstream.url,  # shows final URL after any redirects
         })
 
     except Exception as e:

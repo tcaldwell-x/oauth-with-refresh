@@ -170,7 +170,10 @@
                 <!-- Response -->
                 <div id="apiResponseWrapper" style="display:none;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small">Response</span>
+                        <div>
+                            <span class="text-muted small">Response</span>
+                            <span id="apiRequestUrl" class="text-muted small ms-2 font-monospace" style="font-size:0.75em;"></span>
+                        </div>
                         <div class="d-flex align-items-center gap-2">
                             <span id="apiStatusBadge" class="badge"></span>
                             <a id="apiDownloadBtn" class="btn btn-outline-secondary btn-sm" style="display:none;">
@@ -314,11 +317,13 @@
         const jsonWrapper    = document.getElementById('apiJsonWrapper');
         const responseImage  = document.getElementById('apiResponseImage');
         const downloadBtn    = document.getElementById('apiDownloadBtn');
+        const requestUrlEl   = document.getElementById('apiRequestUrl');
 
         // Reset previous response
         imageWrapper.style.display = 'none';
         jsonWrapper.style.display  = 'none';
         downloadBtn.style.display  = 'none';
+        requestUrlEl.textContent   = '';
         if (responseImage.src) URL.revokeObjectURL(responseImage.src);
 
         try {
@@ -361,6 +366,7 @@
                 // --- JSON / text response ---
                 jsonWrapper.style.display = 'block';
                 const data = await res.json();
+                if (data.request_url) requestUrlEl.textContent = '→ ' + data.request_url;
                 if (data.error) {
                     statusBadge.className   = 'badge bg-danger';
                     statusBadge.textContent = 'Error';
