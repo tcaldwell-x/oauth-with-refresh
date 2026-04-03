@@ -1,5 +1,6 @@
 # OAuth2.0 Application - Minimal access token retrieval flow
 import os
+import json
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 from requests_oauthlib import OAuth2Session
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ import hashlib
 import time
 import datetime
 import urllib.parse
+import requests as req_lib
 
 # Load environment variables
 load_dotenv()
@@ -786,6 +788,163 @@ def api_request():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Secret Rotation Test – persistent token store & testing dashboard
+# ---------------------------------------------------------------------------
+
+SAVED_TOKENS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_tokens.json')
+
+
+def _load_saved_tokens():
+    """Load saved tokens from disk."""
+    if os.path.exists(SAVED_TOKENS_FILE):
+        with open(SAVED_TOKENS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def _save_tokens(tokens):
+    """Write tokens dict to disk."""
+    with open(SAVED_TOKENS_FILE, 'w') as f:
+        json.dump(tokens, f, indent=2)
+
+
+@app.route('/save-token', methods=['POST'])
+def save_token():
+    """Persist the current session token to disk so it survives secret rotation."""
+    token = session.get('oauth_token')
+    user_info = session.get('user_info')
+    if not token or not user_info:
+        return jsonify({'success': False, 'message': 'No active session to save'}), 400
+
+    user_data = user_info.get('data', {})
+    username = user_data.get('username', 'unknown')
+    user_id = user_data.get('id', 'unknown')
+
+    tokens = _load_saved_tokens()
+    tokens[username] = {
+        'username': username,
+        'user_id': user_id,
+        'name': user_data.get('name', username),
+        'profile_image_url': user_data.get('profile_image_url', ''),
+        'token': token,
+        'saved_at': int(time.time()),
+        'client_id_used': X_CLIENT_ID,
+        # Store a hint of the secret that was active when the token was issued
+        'client_secret_hint': (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A',
+    }
+    _save_tokens(tokens)
+    return jsonify({'success': True, 'message': f'Token saved for @{username}'})
+
+
+@app.route('/secret-test')
+def secret_test():
+    """Dashboard for testing whether tokens still work after a secret rotation."""
+    tokens = _load_saved_tokens()
+    current_secret_hint = (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A'
+    return render_template(
+        'secret_test.html',
+        saved_tokens=tokens,
+        current_secret_hint=current_secret_hint,
+        client_id=X_CLIENT_ID,
+    )
+
+
+@app.route('/secret-test/api-call', methods=['POST'])
+def secret_test_api_call():
+    """Use a saved access token to call GET /2/users/me and report the result."""
+    data = request.get_json()
+    username = data.get('username')
+    tokens = _load_saved_tokens()
+    entry = tokens.get(username)
+    if not entry:
+        return jsonify({'success': False, 'error': 'Token not found for this user'})
+
+    access_token = entry['token'].get('access_token', '')
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+    }
+    try:
+        r = req_lib.get(
+            'https://api.x.com/2/users/me',
+            headers=headers,
+            params={'user.fields': 'name,username,profile_image_url'},
+        )
+        try:
+            body = r.json()
+        except Exception:
+            body = r.text
+        return jsonify({
+            'success': r.status_code == 200,
+            'status_code': r.status_code,
+            'body': body,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/secret-test/refresh', methods=['POST'])
+def secret_test_refresh():
+    """Try to refresh a saved token using the *current* client secret."""
+    data = request.get_json()
+    username = data.get('username')
+    tokens = _load_saved_tokens()
+    entry = tokens.get(username)
+    if not entry:
+        return jsonify({'success': False, 'error': 'Token not found for this user'})
+
+    refresh_token_val = entry['token'].get('refresh_token')
+    if not refresh_token_val:
+        return jsonify({'success': False, 'error': 'No refresh token saved for this user'})
+
+    token_data = {
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token_val,
+        'client_id': X_CLIENT_ID,
+    }
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': f'Basic {base64.b64encode(f"{X_CLIENT_ID}:{X_CLIENT_SECRET}".encode()).decode()}',
+    }
+    try:
+        r = req_lib.post(TOKEN_URL, data=token_data, headers=headers)
+        try:
+            body = r.json()
+        except Exception:
+            body = r.text
+        result = {
+            'success': r.status_code == 200,
+            'status_code': r.status_code,
+            'body': body,
+        }
+        # If refresh succeeded, update the saved token on disk
+        if r.status_code == 200 and isinstance(body, dict):
+            new_token = body.copy()
+            if 'refresh_token' not in new_token and refresh_token_val:
+                new_token['refresh_token'] = refresh_token_val
+            new_token['timestamp'] = int(time.time())
+            entry['token'] = new_token
+            entry['last_refreshed_at'] = int(time.time())
+            entry['client_secret_hint_at_refresh'] = (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A'
+            _save_tokens(tokens)
+            result['message'] = 'Token refreshed and saved.'
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/secret-test/delete', methods=['POST'])
+def secret_test_delete():
+    """Remove a saved token."""
+    data = request.get_json()
+    username = data.get('username')
+    tokens = _load_saved_tokens()
+    if username in tokens:
+        del tokens[username]
+        _save_tokens(tokens)
+    return jsonify({'success': True})
 
 
 if __name__ == '__main__':

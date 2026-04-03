@@ -78,6 +78,17 @@
         </div>
         {% endif %}
 
+        <!-- Save for rotation test -->
+        <div class="d-flex gap-2 mb-4">
+            <button id="saveForTestBtn" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-shield-lock me-1"></i> Save for Rotation Test
+            </button>
+            <a href="{{ url_for('secret_test') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-right me-1"></i> Go to Rotation Test Dashboard
+            </a>
+        </div>
+        <div id="saveFeedback" class="mb-3" style="display:none;"></div>
+
         <!-- Token metadata -->
         <div class="card">
             <div class="card-header fw-semibold">
@@ -292,6 +303,33 @@
 
     methodSelect.addEventListener('change', function () {
         bodyWrapper.style.display = ['POST', 'PUT', 'PATCH'].includes(this.value) ? 'block' : 'none';
+    });
+
+    // Save for rotation test
+    document.getElementById('saveForTestBtn').addEventListener('click', async function () {
+        const btn = this;
+        const feedback = document.getElementById('saveFeedback');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+        try {
+            const res = await fetch('/save-token', { method: 'POST' });
+            const data = await res.json();
+            feedback.style.display = 'block';
+            if (data.success) {
+                feedback.className = 'mb-3 alert alert-success py-2 small';
+                feedback.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ' + data.message;
+            } else {
+                feedback.className = 'mb-3 alert alert-danger py-2 small';
+                feedback.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> ' + (data.message || 'Failed to save');
+            }
+        } catch (e) {
+            feedback.style.display = 'block';
+            feedback.className = 'mb-3 alert alert-danger py-2 small';
+            feedback.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Error: ' + e.message;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Save for Rotation Test';
+        }
     });
 
     document.getElementById('apiSendBtn').addEventListener('click', async function () {
