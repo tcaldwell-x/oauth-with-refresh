@@ -473,12 +473,10 @@ def callback():
         }
 
         # Fetch user information and store only the flat fields we need.
-        # Use the full original token (not the slimmed session copy) since
-        # OAuth2Session needs token_type etc.
         user_info = fetch_user_info(token)
         user_data = user_info.get('data') or {}
         if not user_data.get('username'):
-            # If the user-info call failed, make a direct fallback attempt
+            # Fallback attempt without OAuth2Session wrapper
             try:
                 r = req_lib.get(
                     'https://api.x.com/2/users/me',
@@ -489,11 +487,26 @@ def callback():
                     user_data = r.json().get('data') or {}
             except Exception:
                 pass
+
+        # If user info is still unavailable (e.g. app not enrolled in a
+        # Project, or Free-tier), generate a stable short ID from the
+        # access token so each login is distinguishable.
+        if not user_data.get('username'):
+            token_hash = hashlib.sha256(
+                token['access_token'].encode()
+            ).hexdigest()[:8]
+            user_data = {
+                'id': token_hash,
+                'name': f'User {token_hash}',
+                'username': f'user_{token_hash}',
+                'profile_image_url': '',
+            }
+
         session['user_info'] = {
             'data': {
-                'id': user_data.get('id') or 'unknown',
-                'name': user_data.get('name') or 'Unknown',
-                'username': user_data.get('username') or 'unknown',
+                'id': user_data.get('id'),
+                'name': user_data.get('name'),
+                'username': user_data.get('username'),
                 'profile_image_url': user_data.get('profile_image_url') or '',
             }
         }
@@ -702,12 +715,13 @@ def token_info():
     token = session.get('oauth_token')
     user_info = session.get('user_info')
     
-    if not token or not user_info:
+    if not token:
         return redirect(url_for('index'))
 
-    user_data = user_info.get('data', {})
-    if not user_data:
-        return render_template('error.html', error="Could not retrieve user info. Please try logging in again.")
+    user_data = (user_info or {}).get('data') or {}
+    # Provide sensible defaults so the page always renders
+    user_data.setdefault('name', 'User')
+    user_data.setdefault('username', 'user')
 
     # Add a timestamp if not present
     if 'timestamp' not in token:
