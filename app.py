@@ -68,10 +68,10 @@ else:
     X_REDIRECT_URI = "https://oauth-with-refresh-x3j6.vercel.app/callback"
 
 # Shared headers for all X API requests
-X_REQUEST_HEADERS = {
-    'X-B3-Flags': '1',
-    'X-TFE-Experiment-environment': 'staging1',
-}
+# NOTE: staging headers (X-B3-Flags, X-TFE-Experiment-environment) removed —
+# they route requests to an internal staging environment which breaks user-info
+# and other API calls in production.
+X_REQUEST_HEADERS = {}
 
 # X OAuth2 endpoints
 AUTHORIZATION_BASE_URL = 'https://x.com/i/oauth2/authorize'
