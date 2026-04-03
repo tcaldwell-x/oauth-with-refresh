@@ -51,7 +51,7 @@ X_CLIENT_ID = os.getenv('X_CLIENT_ID')
 X_CLIENT_SECRET = os.getenv('X_CLIENT_SECRET')
 
 # Production domain configuration
-PRODUCTION_DOMAIN = os.getenv('PRODUCTION_DOMAIN', 'oauth2-rose.vercel.app')
+PRODUCTION_DOMAIN = os.getenv('PRODUCTION_DOMAIN', 'oauth-with-refresh-x3j6.vercel.app')
 
 # Get the appropriate redirect URI based on environment
 if os.getenv('X_REDIRECT_URI'):
@@ -65,7 +65,7 @@ elif os.getenv('VERCEL_URL'):
     X_REDIRECT_URI = f"https://{os.getenv('VERCEL_URL')}/callback"
 else:
     # Local development
-    X_REDIRECT_URI = "https://oauth2-rose.vercel.app/callback"
+    X_REDIRECT_URI = "https://oauth-with-refresh-x3j6.vercel.app/callback"
 
 # Shared headers for all X API requests
 X_REQUEST_HEADERS = {
