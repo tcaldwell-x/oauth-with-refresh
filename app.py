@@ -125,6 +125,17 @@ def _jinja2_filter_strftime(timestamp, fmt=None):
     return dt.strftime(fmt)
 
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Catch-all error handler that shows the real error (useful on Vercel)."""
+    import traceback as tb
+    trace = tb.format_exc()
+    return (
+        f'<h1>500 — {type(e).__name__}</h1>'
+        f'<pre style="white-space:pre-wrap;color:red;">{trace}</pre>'
+    ), 500
+
+
 @app.route('/')
 def index():
     """Main page that displays login option"""
