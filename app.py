@@ -457,14 +457,34 @@ def callback():
         
         # Add a timestamp to the token for tracking expiration
         token['timestamp'] = int(time.time())
-        
-        # Store the token in the session
-        session['oauth_token'] = token
-        
-        # Fetch user information
+
+        # Store only the essential token fields to keep the cookie small
+        session['oauth_token'] = {
+            'access_token': token.get('access_token'),
+            'refresh_token': token.get('refresh_token'),
+            'token_type': token.get('token_type'),
+            'expires_in': token.get('expires_in'),
+            'expires_at': token.get('expires_at'),
+            'scope': token.get('scope'),
+            'timestamp': token['timestamp'],
+        }
+
+        # Fetch user information and store only the flat fields we need
         user_info = fetch_user_info(token)
-        session['user_info'] = user_info
-        
+        user_data = user_info.get('data', {})
+        session['user_info'] = {
+            'data': {
+                'id': user_data.get('id'),
+                'name': user_data.get('name'),
+                'username': user_data.get('username'),
+                'profile_image_url': user_data.get('profile_image_url'),
+            }
+        }
+
+        # Clear PKCE / state values that are no longer needed
+        session.pop('code_verifier', None)
+        session.pop('oauth_state', None)
+
         # Redirect to token display page
         return redirect(url_for('token_info'))
     
