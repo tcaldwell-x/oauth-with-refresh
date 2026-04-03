@@ -794,26 +794,121 @@ def api_request():
 # Secret Rotation Test – persistent token store & testing dashboard
 # ---------------------------------------------------------------------------
 
-SAVED_TOKENS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saved_tokens.json')
+import psycopg2
+import psycopg2.extras
+
+DATABASE_URL = os.getenv('DATABASE_URL')  # Neon connection string
+
+
+def _get_db():
+    """Return a psycopg2 connection to the Neon database."""
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
+
+
+def _init_db():
+    """Create the saved_tokens table if it doesn't already exist."""
+    if not DATABASE_URL:
+        return
+    try:
+        conn = _get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS saved_tokens (
+                    username        TEXT PRIMARY KEY,
+                    user_id         TEXT,
+                    name            TEXT,
+                    profile_image_url TEXT,
+                    token_data      JSONB NOT NULL,
+                    saved_at        BIGINT,
+                    client_id_used  TEXT,
+                    client_secret_hint TEXT,
+                    last_refreshed_at BIGINT,
+                    client_secret_hint_at_refresh TEXT
+                )
+            """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DB init warning: {e}")
+
+
+# Auto-create table on startup
+_init_db()
 
 
 def _load_saved_tokens():
-    """Load saved tokens from disk."""
-    if os.path.exists(SAVED_TOKENS_FILE):
-        with open(SAVED_TOKENS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+    """Load all saved tokens from the database, returned as {username: entry}."""
+    if not DATABASE_URL:
+        return {}
+    try:
+        conn = _get_db()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM saved_tokens ORDER BY saved_at DESC")
+            rows = cur.fetchall()
+        conn.close()
+        result = {}
+        for row in rows:
+            entry = dict(row)
+            entry['token'] = entry.pop('token_data')
+            result[entry['username']] = entry
+        return result
+    except Exception as e:
+        print(f"DB read error: {e}")
+        return {}
 
 
-def _save_tokens(tokens):
-    """Write tokens dict to disk."""
-    with open(SAVED_TOKENS_FILE, 'w') as f:
-        json.dump(tokens, f, indent=2)
+def _save_token_entry(username, entry):
+    """Upsert a single token entry into the database."""
+    if not DATABASE_URL:
+        return
+    conn = _get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO saved_tokens
+                (username, user_id, name, profile_image_url, token_data,
+                 saved_at, client_id_used, client_secret_hint,
+                 last_refreshed_at, client_secret_hint_at_refresh)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (username) DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                name = EXCLUDED.name,
+                profile_image_url = EXCLUDED.profile_image_url,
+                token_data = EXCLUDED.token_data,
+                saved_at = EXCLUDED.saved_at,
+                client_id_used = EXCLUDED.client_id_used,
+                client_secret_hint = EXCLUDED.client_secret_hint,
+                last_refreshed_at = EXCLUDED.last_refreshed_at,
+                client_secret_hint_at_refresh = EXCLUDED.client_secret_hint_at_refresh
+        """, (
+            username,
+            entry.get('user_id'),
+            entry.get('name'),
+            entry.get('profile_image_url'),
+            json.dumps(entry.get('token', {})),
+            entry.get('saved_at'),
+            entry.get('client_id_used'),
+            entry.get('client_secret_hint'),
+            entry.get('last_refreshed_at'),
+            entry.get('client_secret_hint_at_refresh'),
+        ))
+    conn.commit()
+    conn.close()
+
+
+def _delete_token_entry(username):
+    """Remove a token entry from the database."""
+    if not DATABASE_URL:
+        return
+    conn = _get_db()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM saved_tokens WHERE username = %s", (username,))
+    conn.commit()
+    conn.close()
 
 
 @app.route('/save-token', methods=['POST'])
 def save_token():
-    """Persist the current session token to disk so it survives secret rotation."""
+    """Persist the current session token to the database so it survives deploys & secret rotations."""
     token = session.get('oauth_token')
     user_info = session.get('user_info')
     if not token or not user_info:
@@ -823,8 +918,7 @@ def save_token():
     username = user_data.get('username', 'unknown')
     user_id = user_data.get('id', 'unknown')
 
-    tokens = _load_saved_tokens()
-    tokens[username] = {
+    entry = {
         'username': username,
         'user_id': user_id,
         'name': user_data.get('name', username),
@@ -832,10 +926,9 @@ def save_token():
         'token': token,
         'saved_at': int(time.time()),
         'client_id_used': X_CLIENT_ID,
-        # Store a hint of the secret that was active when the token was issued
         'client_secret_hint': (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A',
     }
-    _save_tokens(tokens)
+    _save_token_entry(username, entry)
     return jsonify({'success': True, 'message': f'Token saved for @{username}'})
 
 
@@ -919,7 +1012,7 @@ def secret_test_refresh():
             'status_code': r.status_code,
             'body': body,
         }
-        # If refresh succeeded, update the saved token on disk
+        # If refresh succeeded, update the saved token in the database
         if r.status_code == 200 and isinstance(body, dict):
             new_token = body.copy()
             if 'refresh_token' not in new_token and refresh_token_val:
@@ -928,7 +1021,7 @@ def secret_test_refresh():
             entry['token'] = new_token
             entry['last_refreshed_at'] = int(time.time())
             entry['client_secret_hint_at_refresh'] = (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A'
-            _save_tokens(tokens)
+            _save_token_entry(username, entry)
             result['message'] = 'Token refreshed and saved.'
         return jsonify(result)
     except Exception as e:
@@ -940,10 +1033,7 @@ def secret_test_delete():
     """Remove a saved token."""
     data = request.get_json()
     username = data.get('username')
-    tokens = _load_saved_tokens()
-    if username in tokens:
-        del tokens[username]
-        _save_tokens(tokens)
+    _delete_token_entry(username)
     return jsonify({'success': True})
 
 
