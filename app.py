@@ -794,20 +794,26 @@ def api_request():
 # Secret Rotation Test – persistent token store & testing dashboard
 # ---------------------------------------------------------------------------
 
-import psycopg2
-import psycopg2.extras
+try:
+    import psycopg2
+    import psycopg2.extras
+    HAS_PSYCOPG2 = True
+except ImportError:
+    HAS_PSYCOPG2 = False
 
 DATABASE_URL = os.getenv('DATABASE_URL')  # Neon connection string
 
 
 def _get_db():
     """Return a psycopg2 connection to the Neon database."""
+    if not HAS_PSYCOPG2:
+        raise RuntimeError('psycopg2 is not installed')
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 
 def _init_db():
     """Create the saved_tokens table if it doesn't already exist."""
-    if not DATABASE_URL:
+    if not DATABASE_URL or not HAS_PSYCOPG2:
         return
     try:
         conn = _get_db()
@@ -838,7 +844,7 @@ _init_db()
 
 def _load_saved_tokens():
     """Load all saved tokens from the database, returned as {username: entry}."""
-    if not DATABASE_URL:
+    if not DATABASE_URL or not HAS_PSYCOPG2:
         return {}
     try:
         conn = _get_db()
@@ -859,7 +865,7 @@ def _load_saved_tokens():
 
 def _save_token_entry(username, entry):
     """Upsert a single token entry into the database."""
-    if not DATABASE_URL:
+    if not DATABASE_URL or not HAS_PSYCOPG2:
         return
     conn = _get_db()
     with conn.cursor() as cur:
@@ -897,7 +903,7 @@ def _save_token_entry(username, entry):
 
 def _delete_token_entry(username):
     """Remove a token entry from the database."""
-    if not DATABASE_URL:
+    if not DATABASE_URL or not HAS_PSYCOPG2:
         return
     conn = _get_db()
     with conn.cursor() as cur:
