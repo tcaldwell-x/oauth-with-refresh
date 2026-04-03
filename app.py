@@ -472,15 +472,29 @@ def callback():
             'timestamp': token['timestamp'],
         }
 
-        # Fetch user information and store only the flat fields we need
+        # Fetch user information and store only the flat fields we need.
+        # Use the full original token (not the slimmed session copy) since
+        # OAuth2Session needs token_type etc.
         user_info = fetch_user_info(token)
-        user_data = user_info.get('data', {})
+        user_data = user_info.get('data') or {}
+        if not user_data.get('username'):
+            # If the user-info call failed, make a direct fallback attempt
+            try:
+                r = req_lib.get(
+                    'https://api.x.com/2/users/me',
+                    headers={'Authorization': f'Bearer {token["access_token"]}'},
+                    params={'user.fields': 'name,username,profile_image_url'},
+                )
+                if r.status_code == 200:
+                    user_data = r.json().get('data') or {}
+            except Exception:
+                pass
         session['user_info'] = {
             'data': {
-                'id': user_data.get('id'),
-                'name': user_data.get('name'),
-                'username': user_data.get('username'),
-                'profile_image_url': user_data.get('profile_image_url'),
+                'id': user_data.get('id') or 'unknown',
+                'name': user_data.get('name') or 'Unknown',
+                'username': user_data.get('username') or 'unknown',
+                'profile_image_url': user_data.get('profile_image_url') or '',
             }
         }
 
@@ -959,15 +973,18 @@ def save_token():
     if not token or not user_info:
         return jsonify({'success': False, 'message': 'No active session to save'}), 400
 
-    user_data = user_info.get('data', {})
-    username = user_data.get('username', 'unknown')
-    user_id = user_data.get('id', 'unknown')
+    user_data = user_info.get('data') or {}
+    username = user_data.get('username') or None
+    user_id = user_data.get('id') or None
+
+    if not username:
+        return jsonify({'success': False, 'message': 'No username in session. Try logging out and back in.'}), 400
 
     entry = {
         'username': username,
         'user_id': user_id,
-        'name': user_data.get('name', username),
-        'profile_image_url': user_data.get('profile_image_url', ''),
+        'name': user_data.get('name') or username,
+        'profile_image_url': user_data.get('profile_image_url') or '',
         'token': token,
         'saved_at': int(time.time()),
         'client_id_used': X_CLIENT_ID,
