@@ -130,6 +130,9 @@ def handle_exception(e):
     """Catch-all error handler that shows the real error (useful on Vercel)."""
     import traceback as tb
     trace = tb.format_exc()
+    # Return JSON for AJAX/fetch requests, HTML otherwise
+    if request.accept_mimetypes.best == 'application/json' or request.is_json:
+        return jsonify({'success': False, 'error': f'{type(e).__name__}: {e}'}), 500
     return (
         f'<h1>500 — {type(e).__name__}</h1>'
         f'<pre style="white-space:pre-wrap;color:red;">{trace}</pre>'
@@ -946,6 +949,11 @@ def _delete_token_entry(username):
 @app.route('/save-token', methods=['POST'])
 def save_token():
     """Persist the current session token to the database so it survives deploys & secret rotations."""
+    if not DATABASE_URL:
+        return jsonify({'success': False, 'message': 'DATABASE_URL is not configured. Add it to your Vercel environment variables.'}), 500
+    if not HAS_PSYCOPG2:
+        return jsonify({'success': False, 'message': 'psycopg2 is not installed.'}), 500
+
     token = session.get('oauth_token')
     user_info = session.get('user_info')
     if not token or not user_info:
@@ -965,7 +973,10 @@ def save_token():
         'client_id_used': X_CLIENT_ID,
         'client_secret_hint': (X_CLIENT_SECRET or '')[:4] + '...' + (X_CLIENT_SECRET or '')[-4:] if X_CLIENT_SECRET else 'N/A',
     }
-    _save_token_entry(username, entry)
+    try:
+        _save_token_entry(username, entry)
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Database error: {e}'}), 500
     return jsonify({'success': True, 'message': f'Token saved for @{username}'})
 
 
