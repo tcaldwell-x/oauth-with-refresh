@@ -23,6 +23,13 @@
             </a>
         </div>
 
+        {% if user_info_error %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>User info lookup failed:</strong> {{ user_info_error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
         <!-- Access token card -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">

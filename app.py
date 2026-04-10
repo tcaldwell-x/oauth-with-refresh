@@ -474,6 +474,7 @@ def callback():
 
         # Fetch user information and store only the flat fields we need.
         user_info = fetch_user_info(token)
+        user_info_error = user_info.get('error')
         user_data = user_info.get('data') or {}
         if not user_data.get('username'):
             # Fallback attempt without OAuth2Session wrapper
@@ -483,10 +484,13 @@ def callback():
                     headers={'Authorization': f'Bearer {token["access_token"]}'},
                     params={'user.fields': 'name,username,profile_image_url'},
                 )
+                logger.info(f"Fallback /users/me status={r.status_code} body={r.text[:500]}")
                 if r.status_code == 200:
                     user_data = r.json().get('data') or {}
-            except Exception:
-                pass
+                else:
+                    user_info_error = f"/2/users/me returned {r.status_code}: {r.text[:300]}"
+            except Exception as fallback_err:
+                user_info_error = f"Fallback /users/me exception: {fallback_err}"
 
         # If user info is still unavailable (e.g. app not enrolled in a
         # Project, or Free-tier), generate a stable short ID from the
@@ -510,6 +514,8 @@ def callback():
                 'profile_image_url': user_data.get('profile_image_url') or '',
             }
         }
+        if user_info_error:
+            session['user_info_error'] = user_info_error
 
         # Clear PKCE / state values that are no longer needed
         session.pop('code_verifier', None)
@@ -730,7 +736,8 @@ def token_info():
     return render_template('token.html', 
                           token=token, 
                           user=user_data,
-                          current_time=int(time.time()))
+                          current_time=int(time.time()),
+                          user_info_error=session.pop('user_info_error', None))
 
 
 @app.route('/refresh-token')
