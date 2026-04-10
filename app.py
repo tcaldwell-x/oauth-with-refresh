@@ -75,8 +75,8 @@ X_REQUEST_HEADERS = {}
 
 # X OAuth2 endpoints
 AUTHORIZATION_BASE_URL = 'https://localhost.twitter.com:3443/i/oauth2/authorize'
-TOKEN_URL = 'https://api.x.com/2/oauth2/token'
-USERINFO_URL = 'https://api.x.com/2/users/me'
+TOKEN_URL = 'https://localhost.twitter.com:3443/i/api/2/oauth2/token'
+USERINFO_URL = 'https://localhost.twitter.com:3443/i/api/2/users/me'
 
 # Scopes needed for the application
 SCOPES = [
@@ -479,7 +479,7 @@ def callback():
             # Fallback attempt without OAuth2Session wrapper
             try:
                 r = req_lib.get(
-                    'https://api.x.com/2/users/me',
+                    'https://localhost.twitter.com:3443/i/api/2/users/me',
                     headers={'Authorization': f'Bearer {token["access_token"]}'},
                     params={'user.fields': 'name,username,profile_image_url'},
                 )
@@ -1040,7 +1040,7 @@ def secret_test_api_call():
     }
     try:
         r = req_lib.get(
-            'https://api.x.com/2/users/me',
+            'https://localhost.twitter.com:3443/i/api/2/users/me',
             headers=headers,
             params={'user.fields': 'name,username,profile_image_url'},
         )
