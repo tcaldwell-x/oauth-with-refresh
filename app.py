@@ -75,7 +75,7 @@ X_REQUEST_HEADERS = {}
 
 # X OAuth2 endpoints
 AUTHORIZATION_BASE_URL = 'https://localhost.twitter.com:3443/i/oauth2/authorize'
-TOKEN_URL = 'https://localhost.twitter.com:3443/2/oauth2/token'
+TOKEN_URL = 'https://api.x.com/2/oauth2/token'
 USERINFO_URL = 'https://api.x.com/2/users/me'
 
 # Scopes needed for the application
